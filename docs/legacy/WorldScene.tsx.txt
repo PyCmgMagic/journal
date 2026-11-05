@@ -1,0 +1,157 @@
+import { useMemo, useRef, type PointerEvent } from 'react';
+import { useFrame } from '@react-three/fiber';
+import { Edges, Html, Line } from '@react-three/drei';
+import { CatmullRomCurve3, ShaderMaterial, Vector3 } from 'three';
+import type { Category } from '../../lib/world-machine';
+import { createMotionRuntime } from './motion-runtime';
+
+export interface WorldSceneProps {
+  runtime: ReturnType<typeof createMotionRuntime>;
+  reducedMotion: boolean;
+  activeCategory: Category | null;
+  readCount: number;
+  onCategory: (category: Category) => void;
+  onHover: (category: Category | null) => void;
+  onHoldStart: (event: PointerEvent<HTMLButtonElement>) => void;
+  onHoldEnd: () => void;
+  onActivate: () => void;
+}
+
+const ink = '#675778';
+const categories: { id: Category; label: string; pos: [number, number, number] }[] = [
+  { id: 'notes', label: '学习笔记', pos: [-2.25, .27, 2.25] },
+  { id: 'practice', label: '实践记录', pos: [.05, .27, 1.7] },
+  { id: 'reading', label: '阅读随想', pos: [2.35, .27, 1.15] },
+];
+
+function Ground({ runtime }: Pick<WorldSceneProps, 'runtime'>) {
+  const mat = useRef<ShaderMaterial>(null);
+  const uniforms = useMemo(() => ({ uWave: { value: -1 }, uAwake: { value: 0 } }), []);
+  useFrame(() => { if (mat.current) { mat.current.uniforms.uWave.value = runtime.waveRadius; mat.current.uniforms.uAwake.value = runtime.awake; } });
+  return <mesh rotation={[-Math.PI / 2, 0, 0]} position={[1, .19, 0]}>
+    <circleGeometry args={[6.6, 56]}/>
+    <shaderMaterial ref={mat} uniforms={uniforms} vertexShader={`varying vec3 world; void main(){vec4 p=modelMatrix*vec4(position,1.);world=p.xyz;gl_Position=projectionMatrix*viewMatrix*p;}`} fragmentShader={`varying vec3 world; uniform float uWave; uniform float uAwake; void main(){float d=length(world.xz-vec2(4.8,-2.3)); float wave=1.-smoothstep(uWave-.45,uWave+.45,d); vec3 quiet=vec3(.64,.76,.67); vec3 awake=vec3(.66,.86,.73); float line=smoothstep(.12,0.,abs(d-uWave)); vec3 col=mix(quiet,awake,wave); col+=vec3(.18,.16,.09)*line*(1.-uAwake*.45); gl_FragColor=vec4(col,1.);}`} />
+  </mesh>;
+}
+
+function Island() {
+  const lines = useMemo(() => Array.from({ length: 9 }, (_, row) => {
+    const pts: [number, number, number][] = [];
+    const y = -.35 - row * .23;
+    const radius = 6.55 - row * .20;
+    for (let i = 0; i <= 60; i++) {
+      const a = (i / 60) * Math.PI * 2;
+      pts.push([1 + Math.cos(a) * (radius + Math.sin(a * 7 + row) * .09), y + Math.sin(a * 5 + row) * .06, Math.sin(a) * (radius + Math.cos(a * 6) * .08)]);
+    }
+    return pts;
+  }), []);
+  return <group>
+    <mesh position={[1, -1.15, 0]}><cylinderGeometry args={[6.6, 3.55, 2.65, 32, 3]}/><meshToonMaterial color="#aa92b4"/><Edges color="#74617e" threshold={35}/></mesh>
+    <mesh position={[1,-2.75,0]}><coneGeometry args={[3.6, 1.35, 20]}/><meshToonMaterial color="#8e789d"/><Edges color="#6f5c7d" threshold={30}/></mesh>
+    {lines.map((points, i) => <Line key={i} points={points} color="#776382" lineWidth={.7} transparent opacity={.6}/>)}
+  </group>;
+}
+
+function Pathway() {
+  const curve = useMemo(() => new CatmullRomCurve3([
+    new Vector3(-4.45,.225,3.85), new Vector3(-3.3,.225,2.8), new Vector3(-2.1,.225,2.15),
+    new Vector3(-.6,.225,2.35), new Vector3(.7,.225,1.7), new Vector3(2.1,.225,1), new Vector3(3.2,.225,-.2),
+  ]), []);
+  return <group><mesh><tubeGeometry args={[curve,80,.20,7,false]}/><meshBasicMaterial color="#f4d4ba"/></mesh>
+    <Line points={curve.getPoints(80).map(p=>[p.x,p.y+.12,p.z] as [number,number,number])} color="#e8c29e" lineWidth={.7}/></group>;
+}
+
+function Planet() {
+  return <group position={[-8,8,-30]} rotation={[.1,-.3,-.15]}>
+    <mesh><sphereGeometry args={[6.3,40,28]}/><meshToonMaterial color="#e8c0c8"/><Edges color="#ad8baa" threshold={38}/></mesh>
+    <mesh rotation={[1.22,.02,.18]}><ringGeometry args={[8,10.1,80]}/><meshBasicMaterial color="#f1dfca" side={2} transparent opacity={.92}/></mesh>
+    <mesh rotation={[1.22,.02,.18]}><ringGeometry args={[9,9.08,80]}/><meshBasicMaterial color="#ab8da9" side={2}/></mesh>
+  </group>;
+}
+
+function Cloud({ pos, scale = 1 }: {pos: [number,number,number];scale?:number}) {
+  return <group position={pos} scale={scale}>{[[-1.3,0,0,.9],[-.65,.36,0,1.1],[.15,.25,0,1.2],[.9,.12,0,1],[1.55,-.05,0,.75]].map(([x,y,z,s], i)=><mesh key={i} position={[x,y,z]} scale={[s,s*.66,s*.55]}><sphereGeometry args={[1,10,8]}/><meshToonMaterial color={i%2?'#f4d3c7':'#edc7c4'}/></mesh>)}</group>;
+}
+
+function Observatory() {
+  return <group position={[3.2,.23,-1.2]} rotation={[0,-.18,0]}>
+    <mesh position={[0,.22,0]}><cylinderGeometry args={[2.05,2.22,.44,28]}/><meshToonMaterial color="#ddcddc"/><Edges color={ink} threshold={25}/></mesh>
+    <mesh position={[0,1.02,0]}><cylinderGeometry args={[1.72,1.8,1.25,32]}/><meshToonMaterial color="#e9e1df"/><Edges color={ink} threshold={35}/></mesh>
+    <mesh position={[0,1.67,0]} scale={[1.78,.68,1.78]}><sphereGeometry args={[1,32,12,0,Math.PI*2,0,Math.PI/2]}/><meshToonMaterial color="#d6c8da"/><Edges color={ink} threshold={30}/></mesh>
+    <mesh position={[0,1.25,1.765]}><boxGeometry args={[2.25,.78,.06]}/><meshBasicMaterial color="#5f586c"/><Edges color={ink}/></mesh>
+    <mesh position={[0,1.25,1.802]}><boxGeometry args={[2.05,.62,.015]}/><meshBasicMaterial color="#d5bca9"/></mesh>
+    {Array.from({length:3},(_,i)=><mesh key={i} position={[0,.99+i*.25,1.825]}><boxGeometry args={[2.1,.035,.03]}/><meshBasicMaterial color="#6c566e"/></mesh>)}
+    {Array.from({length:22},(_,i)=><mesh key={i} position={[-.96+(i%11)*.19,1.09+Math.floor(i/11)*.25,1.84]}><boxGeometry args={[.1,.17,.025]}/><meshBasicMaterial color={['#a17c83','#e6bd83','#829c94','#c59286'][i%4]}/></mesh>)}
+    <mesh position={[1.55,.8,.92]} rotation={[0,.6,0]}><boxGeometry args={[.55,1.05,.08]}/><meshToonMaterial color="#8db9c0"/><Edges color={ink}/></mesh>
+    <group position={[-2.15,.2,1.2]} rotation={[0,-.5,0]}>
+      <mesh position={[0,.65,0]}><cylinderGeometry args={[.08,.1,1.3,8]}/><meshToonMaterial color="#796b80"/></mesh>
+      {[-.5,.5].map((x,i)=><mesh key={i} position={[x*.36,.28,.08]} rotation={[0,0,x*.5]}><cylinderGeometry args={[.035,.035,.65,6]}/><meshBasicMaterial color={ink}/></mesh>)}
+      <group position={[0,1.36,0]} rotation={[0,0,-.36]}><mesh rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[.23,.19,1.45,16]}/><meshToonMaterial color="#f1e0ba"/><Edges color={ink} threshold={30}/></mesh><mesh position={[-.75,0,0]} rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[.25,.25,.12,16]}/><meshToonMaterial color="#8d7894"/></mesh></group>
+    </group>
+  </group>;
+}
+
+function Tree({ position, scale = 1 }: {position:[number,number,number];scale?:number}) {
+  return <group position={position} scale={scale}>
+    <mesh position={[0,.68,0]} rotation={[0,0,.17]}><cylinderGeometry args={[.09,.17,1.36,7]}/><meshToonMaterial color="#8a7185"/></mesh>
+    {[[-.42,1.42,0],[.33,1.65,.08],[-.1,1.92,-.1],[.55,1.35,-.2]].map((p,i)=><mesh key={i} position={p as [number,number,number]} scale={[.7,.34,.5]}><dodecahedronGeometry args={[.85,0]}/><meshToonMaterial color={i%2?'#a5bd9d':'#b3c7a5'}/><Edges color="#7a8c7c" threshold={32}/></mesh>)}
+  </group>;
+}
+
+function Traveler() {
+  return <group position={[.65,.28,-.7]} rotation={[0,-.6,0]} scale={.48}>
+    <mesh position={[0,1.35,0]}><sphereGeometry args={[.35,14,12]}/><meshToonMaterial color="#f4e6d5"/><Edges color={ink} threshold={40}/></mesh>
+    <mesh position={[0,.72,0]}><capsuleGeometry args={[.27,.42,4,10]}/><meshToonMaterial color="#eee6e0"/><Edges color={ink} threshold={40}/></mesh>
+    {[-.17,.17].map((x,i)=><mesh key={i} position={[x,.2,0]}><capsuleGeometry args={[.105,.27,4,8]}/><meshToonMaterial color="#eee6df"/></mesh>)}
+    <mesh position={[0,1.05,.06]}><torusGeometry args={[.32,.075,6,18]}/><meshToonMaterial color="#da7775"/></mesh>
+    <mesh position={[.43,.98,-.1]} rotation={[0,0,.15]}><boxGeometry args={[.75,.11,.08]}/><meshToonMaterial color="#db7776"/></mesh>
+  </group>;
+}
+
+function Stone({ runtime, onHoldStart, onHoldEnd, onActivate }: Pick<WorldSceneProps,'runtime'|'onHoldStart'|'onHoldEnd'|'onActivate'>) {
+  const glow = useRef<any>(null);
+  useFrame(() => { if (glow.current) glow.current.opacity = .28 + runtime.charge * .68 + runtime.awake * .18; });
+  return <group position={[5,.2,-2.55]}>
+    <mesh position={[0,1.9,0]}><boxGeometry args={[.9,3.8,.53]}/><meshToonMaterial color="#83cdd2"/><Edges color="#527e94" threshold={20}/></mesh>
+    <mesh position={[0,1.95,.273]}><planeGeometry args={[.64,3.42]}/><meshBasicMaterial ref={glow} color="#e7f7d5" transparent opacity={.28} depthWrite={false}/></mesh>
+    {Array.from({length:7},(_,i)=><mesh key={i} position={[0,.6+i*.43,.287]}><ringGeometry args={[.055,.071,12]}/><meshBasicMaterial color="#527f97" side={2}/></mesh>)}
+    <Line points={[[0,.6,.29],[0,3.18,.29]]} color="#527f97" lineWidth={1}/>
+    <Html position={[.1,2.25,.45]} center distanceFactor={12} zIndexRange={[20,0]}><button className="monolith-control" aria-label="长按唤醒观测站" onPointerDown={onHoldStart} onPointerUp={onHoldEnd} onPointerCancel={onHoldEnd} onLostPointerCapture={onHoldEnd} onClick={e => { if(e.detail===0) onActivate(); }}>✧</button></Html>
+  </group>;
+}
+
+function Lamp({ id, label, pos, activeCategory, onCategory, onHover }: typeof categories[number] & Pick<WorldSceneProps,'activeCategory'|'onCategory'|'onHover'>) {
+  return <group position={pos}>
+    <mesh position={[0,.1,0]}><cylinderGeometry args={[.20,.23,.2,12]}/><meshToonMaterial color="#a68a82"/><Edges color={ink}/></mesh>
+    <mesh position={[0,.38,0]}><cylinderGeometry args={[.13,.16,.45,12]}/><meshBasicMaterial color={activeCategory===id?'#fff7bf':'#fae5a7'}/><Edges color="#ad8c6f"/></mesh>
+    <mesh position={[0,.63,0]}><cylinderGeometry args={[.18,.14,.09,12]}/><meshToonMaterial color="#b99880"/></mesh>
+    <Html position={[.1,.78,0]} center distanceFactor={12} zIndexRange={[18,0]}><button className="world-label" data-category={id} aria-label={label} onPointerEnter={()=>onHover(id)} onPointerLeave={()=>onHover(null)} onFocus={()=>onHover(id)} onBlur={()=>onHover(null)} onClick={()=>onCategory(id)}>{label}</button></Html>
+  </group>;
+}
+
+function Details() {
+  const rocks = useMemo(() => Array.from({ length: 65 }, (_, i) => {
+    const a = i * 2.399, r = 2.8 + (i % 8) * .43;
+    return { x: 1+Math.cos(a)*r, z: Math.sin(a)*r, s: .07+(i%4)*.047, rot:i*.83 };
+  }), []);
+  return <group>{rocks.map((r,i)=><mesh key={i} position={[r.x,.26,r.z]} rotation={[0,r.rot,0]} scale={[r.s*1.4,r.s,r.s]}><dodecahedronGeometry args={[1,0]}/><meshToonMaterial color={i%3?'#b9a2bc':'#93849f'}/></mesh>)}
+    {Array.from({length:32},(_,i)=>{const a=i*2.4,r=3+(i%6)*.53; return <group key={i} position={[1+Math.cos(a)*r,.24,Math.sin(a)*r]} rotation={[0,a,0]}><mesh position={[0,.15,0]} rotation={[0,0,.35]}><coneGeometry args={[.075,.35,4]}/><meshToonMaterial color={i%4?'#718d79':'#d58a86'}/></mesh><mesh position={[.1,.12,0]} rotation={[0,0,-.45]}><coneGeometry args={[.06,.28,4]}/><meshToonMaterial color="#9db69b"/></mesh></group>})}
+  </group>;
+}
+
+function Stars({ count, runtime }: {count:number;runtime:WorldSceneProps['runtime']}) {
+  const star = useRef<any>(null);
+  useFrame(() => { if(star.current) star.current.visible = runtime.awake > .35 || count > 0; });
+  return <group ref={star} position={[-4,8,-18]}>{Array.from({length:6+Math.min(count,5)},(_,i)=><mesh key={i} position={[i*.65,Math.sin(i*1.5)*.65,0]}><sphereGeometry args={[.055,8,8]}/><meshBasicMaterial color="#fff3c2"/></mesh>)}<Line points={Array.from({length:6},(_,i)=>[i*.65,Math.sin(i*1.5)*.65,0] as [number,number,number])} color="#e9d9bd" lineWidth={1}/></group>;
+}
+
+export default function WorldScene(props: WorldSceneProps) {
+  return <>
+    <ambientLight intensity={2.3}/><directionalLight position={[-5,12,9]} intensity={2.1} color="#fff1df"/>
+    <Planet/><Cloud pos={[-8,1,-12]} scale={2.3}/><Cloud pos={[9,-1,-10]} scale={2}/><Cloud pos={[-9,-3,3]} scale={1.7}/>
+    <Island/><Ground runtime={props.runtime}/><Pathway/><Details/><Observatory/><Stone {...props}/><Traveler/>
+    <Tree position={[5.8,.2,-.1]} scale={1.5}/><Tree position={[-3.2,.2,-1.8]} scale={.85}/><Tree position={[4.7,.2,3.8]} scale={.65}/>
+    {categories.map(c=><Lamp key={c.id} {...c} activeCategory={props.activeCategory} onCategory={props.onCategory} onHover={props.onHover}/>)}
+    <Stars count={props.readCount} runtime={props.runtime}/>
+  </>;
+}

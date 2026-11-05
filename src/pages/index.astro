@@ -1,0 +1,10 @@
+---
+import Page from '../layouts/Page.astro';
+import JournalApp from '../components/JournalApp';
+import { getPosts, summarize } from '../lib/posts';
+const posts = (await getPosts()).map(summarize);
+---
+<Page>
+  <JournalApp posts={posts} client:load />
+  <noscript><section class="no-script"><h2>最近的日志</h2>{posts.map(post => <p><a href={`/journal/${post.slug}/`}>{post.title}</a></p>)}</section></noscript>
+</Page>

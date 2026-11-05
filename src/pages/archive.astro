@@ -1,0 +1,7 @@
+---
+import Page from '../layouts/Page.astro';
+import Header from '../components/Header.astro';
+import { getPosts, summarize } from '../lib/posts';
+const posts = (await getPosts()).map(summarize);
+---
+<Page title="归档 · 异星日志"><Header /><main class="collection-page"><p class="eyebrow">沿着时间回看</p><h1>留下的轨迹</h1><p class="collection-intro">每一个小问题，都有它开始的那一天。</p><div class="archive-year">2026<span>{posts.length} 篇示例日志</span></div><div class="archive-list">{posts.map(post=><a href={`/journal/${post.slug}/`}><time>{post.date.slice(5)}</time><span>{post.title}</span><span aria-hidden="true">↗</span></a>)}</div></main></Page>

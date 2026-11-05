@@ -1,0 +1,7 @@
+---
+import Page from '../layouts/Page.astro';
+import Header from '../components/Header.astro';
+import { getPosts, summarize, categoryNames } from '../lib/posts';
+const posts = (await getPosts()).map(summarize);
+---
+<Page title="全部文章 · 异星日志"><Header /><main class="collection-page"><p class="eyebrow">把探索留下来</p><h1>所有的学习轨迹</h1><p class="collection-intro">学习笔记、实践记录，和阅读之后留下的想法。</p><div class="article-list">{posts.map(post=><a class="article-row" href={`/journal/${post.slug}/`}><span class="post-date">{post.date}</span><div><span class="category-caption">{categoryNames[post.category]}</span><h2>{post.title}</h2><p>{post.description}</p></div><span aria-hidden="true">↗</span></a>)}</div><span class="demo-note">示例日志 · 等待你的第一篇记录</span></main></Page>

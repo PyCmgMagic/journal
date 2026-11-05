@@ -1,0 +1,30 @@
+{
+  "source": "../observatory-world.png",
+  "method": "built-in image_gen editing",
+  "assets": [
+    {
+      "name": "sky-clean.png",
+      "width": 1672,
+      "height": 941,
+      "generatedSource": "C:\\Users\\ASUS\\.codex\\generated_images\\01a19fef-21cc-7720-86d7-0f109acfd9ce\\exec-98ac942a-3aa8-4213-af87-f134fa393e4a.png",
+      "purpose": "Background behind independent planet and island layers",
+      "prompt": "Use case: precise-object-edit. Production CLEAN PLATE inpainting of supplied illustration. Input image is the edit target, 1672 by 941 composition. Produce one opaque full-frame landscape image with exactly the same framing, perspective, muted lavender sky, peach cloudscape, thin hand-inked Moebius-like linework and delicate texture. This is a background layer for a layered website: REMOVE the huge pink ringed planet and its rings and small orbital decorations; REMOVE the entire large foreground floating mint island and all its cliffs, plants, book, observatory, telescope, antennas, cyan monolith, traveler and lamps; REMOVE foreground bottom-left and bottom-right rocks and plants. Reconstruct these occluded areas with a continuous quiet lavender sky in the upper half and richly layered peach clouds and a few distant lavender rock pinnacles in the lower half, matching the existing distant background. Retain the original visible sky, peach clouds and distant pinnacles in their existing relative positions and style as precisely as possible. Do not redesign the scene or invent new foreground subjects. The right-side cleared area should be uninterrupted sky and distant clouds because moving foreground assets will be composited over it. Preserve original wide 1672:941 proportions, horizon, color temperature and illustration detail. No typography, UI, symbols, watermark, transparency or borders."
+    },
+    {
+      "name": "island-clean.png",
+      "width": 1672,
+      "height": 941,
+      "generatedSource": "C:\\Users\\ASUS\\.codex\\generated_images\\01a19fef-21cc-7720-86d7-0f109acfd9ce\\exec-3b481b5c-934b-4435-af95-15e6e0c1361a.png",
+      "purpose": "Ground/cliff texture with architecture, traveler, monolith and lamps inpainted out",
+      "prompt": "Use case: precise-object-edit. Precision production CLEAN PLATE inpainting, not redesign. Input image is the edit target. Preserve the exact full-frame 1672 by 941 composition, camera, object sizes and coordinates, fine colored ink contours, hatching, pastel Moebius-like sci-fi illustration style. Remove ONLY these subjects: (1) the entire white observation building, all roof devices and antennas, the telescope and telescope platform; (2) the tall cyan monolith; (3) the seated white-clad traveler and red scarf; (4) all THREE small yellow path lamps, their bases and glow. Reconstruct the holes naturally with the grass, geology, sky or planet that would lie behind each removed object. Important invariants: keep the main floating island silhouette, lavender cliff geometry, winding peach footpath, mint grass, all plants, foreground open book, huge ringed pink planet, original clouds, distant pinnacles, tree and rocky right edge EXACTLY in place and at the original scale. Do not move, simplify or change any retained structure. The island top where the removed building stood should be continuous grassy rock, with sky or planet above the existing terrain outline. The removed cyan monolith region must be naturally reconstructed, not a cyan stain. The result is an opaque full-frame asset for mesh-masked foreground ground layers; no crop, no enlargement, no text, no UI, no watermark, no transparency, no border."
+    },
+    {
+      "name": "planet-cutout.png",
+      "width": 1672,
+      "height": 941,
+      "generatedSource": "C:\\Users\\ASUS\\.codex\\generated_images\\01a19bfd-6376-70e0-8fc7-6fdc7ec31d15\\exec-feedc976-4a95-4821-8bb1-9e13f0fdddaa.png",
+      "purpose": "Transparent planet and continuous rings, with occluded planet surface reconstructed",
+      "prompt": "Use case: background-extraction. This is a production 2.5D texture layer for the existing website. Edit target: the attached 1672x941 Moebius-style observatory illustration. Extract ONLY the enormous peach/pink ringed planet in the upper-middle/right. Remove ALL sky, clouds, mountains, island, buildings, telescope, antennas, cyan monolith, person, trees, lamps and foreground. Output actual RGBA transparent background, not a checkerboard drawing. Preserve exact original planet placement, scale, thin linework, pink and lavender banding, ring ellipse angle and width. Full canvas same 1672x941 aspect ratio; do not center, zoom, crop or recompose. Reconstruct the planet surface and full circular silhouette where foreground buildings and terrain hid it, consistently extending the original fine ink bands. Center approximately x1095 y490, radius~425; ring extends left to x607 y265 and right to x1445 y150. The upper half visible in source must look as unchanged as possible. The rings are thin continuous ivory and blush elliptical bands passing in front and behind the planet with transparent gaps. Only the planet and its rings are opaque. No other moons, stars, decorations, or text. This asset will be overlaid at the exact original image coordinates."
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+---
+import Page from '../../layouts/Page.astro';
+import Header from '../../components/Header.astro';
+import { getPosts, summarize, categoryNames } from '../../lib/posts';
+import { render } from 'astro:content';
+export async function getStaticPaths() {
+  return (await getPosts()).map(entry => ({ params: { id: entry.id }, props: { entry } }));
+}
+const { entry } = Astro.props;
+const post = summarize(entry);
+const { Content, headings } = await render(entry);
+---
+<Page title={`${post.title} · 异星日志`} description={post.description}>
+  <div class="standalone-article">
+  <Header />
+  <div class="article-panorama" aria-hidden="true"></div>
+  <main class="standalone-reading">
+    <div class="reading-topbar">
+    <a class="text-link" href="/">← 返回观测站</a>
+    <span class="reading-status">{post.minutes} 分钟 / {post.demo ? '示例日志' : '异星日志'}</span>
+    </div>
+    <div class="reading-layout">
+      <article class="prose">
+        <p class="eyebrow">{categoryNames[post.category]} · {post.date} <span>{post.demo && '／ 示例日志'}</span></p>
+        <h1>{post.title}</h1><p class="article-description">{post.description}</p>
+        <details class="mobile-reading-toc"><summary>本文目录 <span aria-hidden="true">＋</span></summary><nav aria-label="本文目录">{headings.filter(h=>h.depth===2).map(h=><a href={`#${h.slug}`}>{h.text}</a>)}</nav></details>
+        <div class="article-body"><Content /></div>
+        <footer class="article-footer"><a href="/articles/">全部文章 ↗</a><a href="/">返回观测站 →</a></footer>
+      </article>
+      <nav class="panel-toc desktop-reading-toc" aria-label="本文目录"><span>本文目录</span>{headings.filter(h=>h.depth===2).map(h=><a href={`#${h.slug}`}>{h.text}</a>)}</nav>
+    </div>
+  </main>
+  </div>
+</Page>

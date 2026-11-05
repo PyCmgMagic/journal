@@ -1,0 +1,17 @@
+---
+import '../styles/global.css';
+interface Props { title?: string; description?: string; }
+const { title = '异星日志 · 记录学习，探索未知', description = '把学到的、想到的、做过的，慢慢记下来。一个关于学习与好奇的个人空间。' } = Astro.props;
+---
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#b8adc9" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+  </head>
+  <body><slot /></body>
+</html>

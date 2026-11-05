@@ -1,0 +1,72 @@
+import { Component, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { CatmullRomCurve3, MathUtils, PerspectiveCamera, Vector3 } from 'three';
+import WorldScene, { type WorldSceneProps } from './WorldScene';
+
+type Props = WorldSceneProps & { running: boolean; onReady: () => void };
+
+class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    return this.state.failed
+      ? <div className="scene-fallback"><span className="small-planet"/><p>风景暂时歇一会儿，日志依然可以阅读。</p></div>
+      : this.props.children;
+  }
+}
+
+function CameraRig({ runtime, reducedMotion }: Pick<Props, 'runtime' | 'reducedMotion'>) {
+  const { camera, size, pointer, invalidate } = useThree();
+  const curves = useMemo(() => ({
+    position: new CatmullRomCurve3([new Vector3(13, 9, 18), new Vector3(11.6, 7.6, 15.2), new Vector3(9.7, 6.3, 12.9)]),
+    target: new CatmullRomCurve3([new Vector3(1, .6, 0), new Vector3(2, .9, -.3), new Vector3(3, 1.15, -.6)]),
+    point: new Vector3(), targetPoint: new Vector3(), looking: new Vector3(1, .6, 0),
+  }), []);
+  const lastShift = useRef(Number.NaN);
+  useEffect(() => { runtime.invalidate = invalidate; return () => { runtime.invalidate = () => {}; }; }, [runtime, invalidate]);
+  useFrame((_, delta) => {
+    const progress = reducedMotion ? 0 : MathUtils.clamp(runtime.scrollProgress, 0, 1);
+    curves.position.getPointAt(progress, curves.point).add(runtime.cameraOffset);
+    curves.target.getPointAt(progress, curves.targetPoint).add(runtime.targetOffset);
+    if (size.width < 760) {
+      curves.point.multiplyScalar(1.08);
+      curves.targetPoint.y += .4;
+    }
+    if (!reducedMotion) {
+      curves.point.x += pointer.x * .11;
+      curves.point.y += pointer.y * .07;
+    }
+    const speed = reducedMotion ? 1000 : 5;
+    camera.position.set(
+      MathUtils.damp(camera.position.x, curves.point.x, speed, delta),
+      MathUtils.damp(camera.position.y, curves.point.y, speed, delta),
+      MathUtils.damp(camera.position.z, curves.point.z, speed, delta),
+    );
+    curves.looking.lerp(curves.targetPoint, 1 - Math.exp(-speed * delta));
+    camera.lookAt(curves.looking);
+    runtime.currentPosition.copy(camera.position);
+    runtime.currentTarget.copy(curves.looking);
+    const shift = size.width < 760 ? 0 : runtime.compositionShift + progress * .10;
+    if (camera instanceof PerspectiveCamera && (lastShift.current !== shift || camera.aspect !== size.width / size.height)) {
+      camera.setViewOffset(size.width, size.height, size.width * shift, size.width < 760 ? -size.height * .12 : 0, size.width, size.height);
+      lastShift.current = shift;
+    }
+    if (camera.position.distanceToSquared(curves.point) > .00001) invalidate();
+  });
+  return null;
+}
+
+export default function WorldCanvas({ running, onReady, ...props }: Props) {
+  return <SceneBoundary><Canvas
+    camera={{ fov: 42, position: [13, 9, 18], near: .1, far: 250 }}
+    dpr={[1, 1.5]}
+    frameloop={running && !props.reducedMotion ? 'always' : 'demand'}
+    gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+    flat
+    fallback={<div className="scene-fallback"><p>观测站静静等候，先去读一篇日志吧。</p></div>}
+    onCreated={({ gl }) => { gl.setClearColor(0x000000, 0); onReady(); }}
+  >
+    <CameraRig runtime={props.runtime} reducedMotion={props.reducedMotion}/>
+    <WorldScene {...props}/>
+  </Canvas></SceneBoundary>;
+}
