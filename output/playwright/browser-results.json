@@ -1,34 +1,40 @@
 {
   "browser": "156.0.4314.58",
-  "date": "2026-11-05T10:29:15.987Z",
+  "date": "2026-11-05T12:52:34.356Z",
   "checks": [
     {
       "name": "damped pointer camera",
       "detail": {
         "left": [
-          -0.3518823580466219,
-          -0.075156138299419,
+          -0.3487908387161515,
+          -0.07449584189909374,
           12
         ],
         "right": [
-          0.3407996402019231,
-          -0.07599973166293428,
+          0.3307161607486692,
+          -0.07599953976193036,
           12
         ]
+      }
+    },
+    {
+      "name": "scroll-linked handoff stays at the wheel position and reverses",
+      "detail": {
+        "handoff": 0.1976173676344247
       }
     },
     {
       "name": "reversible scroll",
       "detail": {
         "near": [
-          4.158674948240165,
-          2.162540786749482,
-          4.852670807453416
+          4.158674842722961,
+          2.1625406821315725,
+          4.852671526888898
         ],
         "far": [
-          0.3527632841173755,
-          -0.07582206926799076,
-          11.997540837666886
+          0.34999999999999976,
+          -0.07599999999999997,
+          12
         ]
       }
     },
@@ -38,6 +44,10 @@
         "travelDistance": 2520,
         "earlyProgress": 0.179
       }
+    },
+    {
+      "name": "Home keeps its destination and reopening cancels the previous exit",
+      "detail": true
     },
     {
       "name": "early release cancels",

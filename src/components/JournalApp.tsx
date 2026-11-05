@@ -30,6 +30,12 @@ import type { Category } from "../lib/world-machine";
 type Panel =
   "category" | "all" | "archive" | "about" | "search" | "article" | null;
 type Props = { posts: PostSummary[] };
+type ScenePosition = {
+  scrollY: number;
+  category: Category | null;
+  pointerX: number;
+  pointerY: number;
+};
 const storageKey = "alien-journal:v1";
 
 function Arrow({ back = false }: { back?: boolean }) {
@@ -48,10 +54,14 @@ export default function JournalApp({ posts }: Props) {
   const cameraTween = useRef<gsap.core.Tween | null>(null);
   const worldTween = useRef<gsap.core.Tween | null>(null);
   const panelTween = useRef<gsap.core.Tween | null>(null);
+  const pendingClose = useRef<{ scene: ScenePosition; home: boolean } | null>(
+    null,
+  );
+  const heldPointer = useRef<number | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const articleCache = useRef(new Map<string, PostArticle>());
   const request = useRef<AbortController | null>(null);
-  const sceneSnapshot = useRef({
+  const sceneSnapshot = useRef<ScenePosition>({
     scrollY: 0,
     category: null as Category | null,
     pointerX: 0,
@@ -65,11 +75,11 @@ export default function JournalApp({ posts }: Props) {
   const [mounted, setMounted] = useState(false);
   const [ready, setReady] = useState(false);
   const [encounterReady, setEncounterReady] = useState(false);
-  const [atEncounter, setAtEncounter] = useState(false);
   const [staticScene, setStaticScene] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [storageLoaded, setStorageLoaded] = useState(false);
   const [panel, setPanel] = useState<Panel>(null);
+  const [panelRevision, setPanelRevision] = useState(0);
   const [category, setCategory] = useState<Category | null>(null);
   const [hover, setHover] = useState<Category | null>(null);
   const [previewPoint, setPreviewPoint] = useState({ x: 50, y: 350 });
@@ -83,6 +93,7 @@ export default function JournalApp({ posts }: Props) {
   const readSlugs = useWorldStore((s) => s.readSlugs);
   const dispatch = useWorldStore((s) => s.dispatch);
   liveView.current = { panel, category };
+  const panelOpen = panel !== null;
   useEffect(() => {
     runtime.selectedIndex =
       category === "notes"
@@ -139,49 +150,90 @@ export default function JournalApp({ posts }: Props) {
     !panel &&
     !staticScene &&
     !reducedMotion &&
-    (phase === "charging" || (phase === "idle" && atEncounter));
+    (phase === "idle" || phase === "charging");
   const awakening = phase === "awakening";
-  useEffect(() => {
+  const syncEncounter = useCallback(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
+    const previous = runtime.encounterProgress;
+    const progress =
+      (runtime.heldEncounter ?? runtime.scrollEncounter) *
+      runtime.encounterWeight;
+    if (progress !== previous) {
+      runtime.encounterProgress = progress;
+      viewport.style.setProperty(
+        "--encounter-camera",
+        String(smoothRange(0, matchStart, progress)),
+      );
+      viewport.style.setProperty(
+        "--encounter-blend",
+        String(smoothRange(matchStart, matchEnd, progress)),
+      );
+      viewport.style.setProperty(
+        "--encounter-scale",
+        String(encounterScale(progress)),
+      );
+      viewport.style.setProperty(
+        "--encounter-nav",
+        String(smoothRange(0.26, 0.91, progress)),
+      );
+      viewport.style.setProperty(
+        "--encounter-controls",
+        String(smoothRange(0.91, 0.99, progress)),
+      );
+      viewport.dataset.encounter =
+        progress >= 0.94 ? "near" : progress > 0.12 ? "moving" : "wide";
+      if (previous <= 0.12 && progress > 0.12) {
+        setHover(null);
+        runtime.hoverIndex = -1;
+      }
+    }
+    runtime.invalidate();
+  }, [runtime]);
+
+  useEffect(() => {
+    runtime.syncEncounter = syncEncounter;
+    syncEncounter();
+    return () => {
+      runtime.syncEncounter = () => {};
+    };
+  }, [runtime, syncEncounter]);
+
+  // Only view changes and the ritual can temporarily lower the scroll-driven shot.
+  // Wheel and touch scrolling never start a separate camera tween.
+  useEffect(() => {
     const target = showEncounter ? 1 : 0;
-    const distance = Math.abs(target - runtime.encounterProgress);
+    const distance = Math.abs(target - runtime.encounterWeight);
     if (distance < 0.0001) return;
+    if (reducedMotion || runtime.scrollEncounter === 0) {
+      runtime.encounterWeight = target;
+      syncEncounter();
+      return;
+    }
     const tween = gsap.to(runtime, {
-      encounterProgress: target,
-      duration: reducedMotion ? 0 : Math.max(0.18, 0.96 * distance),
-      delay: awakening && !panel && !reducedMotion ? 0.22 : 0,
+      encounterWeight: target,
+      duration: Math.max(0.18, 0.78 * distance),
+      delay: awakening && !panelOpen && !reducedMotion ? 0.22 : 0,
       ease: "sine.inOut",
-      onUpdate: () => {
-        const progress = runtime.encounterProgress;
-        viewport.style.setProperty(
-          "--encounter-camera",
-          String(smoothRange(0, matchStart, progress)),
-        );
-        viewport.style.setProperty(
-          "--encounter-blend",
-          String(smoothRange(matchStart, matchEnd, progress)),
-        );
-        viewport.style.setProperty(
-          "--encounter-scale",
-          String(encounterScale(progress)),
-        );
-        viewport.style.setProperty(
-          "--encounter-nav",
-          String(smoothRange(0.26, 0.91, progress)),
-        );
-        viewport.dataset.encounter =
-          progress >= 0.88 ? "near" : progress > 0.33 ? "moving" : "wide";
-        runtime.invalidate();
-      },
+      onUpdate: syncEncounter,
     });
     return () => {
       tween.kill();
     };
-  }, [showEncounter, awakening, panel, reducedMotion, runtime]);
+  }, [
+    showEncounter,
+    awakening,
+    panelOpen,
+    reducedMotion,
+    runtime,
+    syncEncounter,
+  ]);
 
   const cancelCharge = useCallback(() => {
     if (useWorldStore.getState().phase !== "charging") return;
+    heldPointer.current = null;
+    runtime.heldEncounter = null;
+    syncEncounter();
     chargeTween.current?.kill();
     chargeTween.current = gsap.to(runtime, {
       charge: 0,
@@ -189,7 +241,7 @@ export default function JournalApp({ posts }: Props) {
       onUpdate: syncRitual,
     });
     dispatch({ type: "charge.cancel" });
-  }, [runtime, reducedMotion, dispatch, syncRitual]);
+  }, [runtime, reducedMotion, dispatch, syncRitual, syncEncounter]);
 
   const { contextSafe } = useGSAP(
     () => {
@@ -208,11 +260,17 @@ export default function JournalApp({ posts }: Props) {
   );
 
   const activate = contextSafe(() => {
-    if (["awakening", "awake"].includes(useWorldStore.getState().phase)) return;
+    if (
+      liveView.current.panel ||
+      ["awakening", "awake"].includes(useWorldStore.getState().phase)
+    )
+      return;
     chargeTween.current?.kill();
     if (useWorldStore.getState().phase !== "charging")
       dispatch({ type: "charge.begin" });
     if (useWorldStore.getState().phase !== "charging") return;
+    heldPointer.current = null;
+    runtime.heldEncounter = null;
     runtime.charge = 1;
     syncRitual();
     dispatch({ type: "charge.complete" });
@@ -239,11 +297,20 @@ export default function JournalApp({ posts }: Props) {
   });
 
   const startHold = contextSafe((event: PointerEvent<HTMLButtonElement>) => {
-    if (event.button !== 0 || panel) return;
+    if (
+      event.button !== 0 ||
+      !event.isPrimary ||
+      panel ||
+      useWorldStore.getState().phase !== "idle"
+    )
+      return;
     event.preventDefault();
+    window.scrollTo({ top: window.scrollY, behavior: "instant" });
     event.currentTarget.setPointerCapture(event.pointerId);
     dispatch({ type: "charge.begin" });
     if (useWorldStore.getState().phase !== "charging") return;
+    heldPointer.current = event.pointerId;
+    runtime.heldEncounter = runtime.scrollEncounter;
     chargeTween.current?.kill();
     chargeTween.current = gsap.to(runtime, {
       charge: 1,
@@ -253,6 +320,10 @@ export default function JournalApp({ posts }: Props) {
       onComplete: activate,
     });
   });
+
+  function endHold(event: PointerEvent<HTMLButtonElement>) {
+    if (heldPointer.current === event.pointerId) cancelCharge();
+  }
 
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
@@ -265,10 +336,12 @@ export default function JournalApp({ posts }: Props) {
       if (document.hidden) cancelCharge();
     };
     window.addEventListener("blur", cancelCharge);
+    window.addEventListener("scroll", cancelCharge, { passive: true });
     document.addEventListener("visibilitychange", cancelHidden);
     document.addEventListener("keydown", escape);
     return () => {
       window.removeEventListener("blur", cancelCharge);
+      window.removeEventListener("scroll", cancelCharge);
       document.removeEventListener("visibilitychange", cancelHidden);
       document.removeEventListener("keydown", escape);
     };
@@ -276,6 +349,7 @@ export default function JournalApp({ posts }: Props) {
 
   function rememberTrigger() {
     if (liveView.current.panel) return;
+    window.scrollTo({ top: window.scrollY, behavior: "instant" });
     triggerRef.current =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
@@ -302,7 +376,12 @@ export default function JournalApp({ posts }: Props) {
       location.href,
     );
   }
-  function writeHistory(kind: Panel, cat?: Category | null, slug?: string) {
+  function writeHistory(
+    kind: Panel,
+    cat?: Category | null,
+    slug?: string,
+    scene = sceneSnapshot.current,
+  ) {
     const paths: Partial<Record<NonNullable<Panel>, string>> = {
       all: "/articles/",
       archive: "/archive/",
@@ -322,7 +401,7 @@ export default function JournalApp({ posts }: Props) {
         kind,
         category: cat,
         slug,
-        scene: sceneSnapshot.current,
+        scene,
         origin: panelOrigin.current,
       },
       "",
@@ -333,6 +412,7 @@ export default function JournalApp({ posts }: Props) {
   const animatePanel = contextSafe(
     (opening: boolean, selection = liveView.current.category) => {
       const isReading = opening && liveView.current.panel === "article";
+      const closing = opening ? null : pendingClose.current;
       panelTween.current?.kill();
       const target = panelRef.current;
       if (target) {
@@ -359,17 +439,14 @@ export default function JournalApp({ posts }: Props) {
           ease: "power3.inOut",
           onComplete: !opening
             ? () => {
+                if (!closing || pendingClose.current !== closing) return;
+                pendingClose.current = null;
                 setPanel(null);
                 setArticle(null);
-                setCategory(sceneSnapshot.current.category);
-                runtime.pointerX = sceneSnapshot.current.pointerX;
-                runtime.pointerY = sceneSnapshot.current.pointerY;
                 dispatch({ type: "view.close" });
-                window.scrollTo({
-                  top: sceneSnapshot.current.scrollY,
-                  behavior: "instant",
-                });
-                triggerRef.current?.focus({ preventScroll: true });
+                restoreScene(closing.scene);
+                if (!closing.home)
+                  triggerRef.current?.focus({ preventScroll: true });
               }
             : undefined,
         });
@@ -402,11 +479,53 @@ export default function JournalApp({ posts }: Props) {
     },
   );
 
-  function closePanel(withHistory = true) {
+  function restoreScene(scene: ScenePosition) {
+    sceneSnapshot.current = scene;
+    setCategory(scene.category);
+    runtime.pointerX = scene.pointerX;
+    runtime.pointerY = scene.pointerY;
+    window.scrollTo({ top: scene.scrollY, behavior: "instant" });
+  }
+
+  function closePanel(withHistory = true, home = false) {
+    if (home) {
+      cancelCharge();
+      setMenuOpen(false);
+    }
+    const scene = home
+      ? { scrollY: 0, category: null, pointerX: 0, pointerY: 0 }
+      : { ...sceneSnapshot.current };
+    if (!liveView.current.panel) {
+      if (home)
+        window.scrollTo({
+          top: 0,
+          behavior: reducedMotion ? "instant" : "smooth",
+        });
+      else if (!withHistory) restoreScene(scene);
+      return;
+    }
+    if (pendingClose.current) {
+      // A history jump or Home can update the destination without restarting the exit.
+      if (home || !withHistory) {
+        Object.assign(pendingClose.current, { scene, home });
+        if (home && withHistory)
+          history.replaceState({ ...history.state, scene }, "", "/");
+      }
+      return;
+    }
     request.current?.abort();
     setHover(null);
-    if (withHistory) writeHistory(null);
+    pendingClose.current = { scene, home };
+    if (withHistory) writeHistory(null, undefined, undefined, scene);
     animatePanel(false);
+  }
+
+  function interruptPanelClose() {
+    if (!pendingClose.current) return;
+    pendingClose.current = null;
+    panelTween.current?.kill();
+    // The next request can reopen the exact same panel and category.
+    setPanelRevision((revision) => revision + 1);
   }
 
   function openList(
@@ -414,6 +533,7 @@ export default function JournalApp({ posts }: Props) {
     cat: Category | null = null,
     push = true,
   ) {
+    interruptPanelClose();
     request.current?.abort();
     cancelCharge();
     if (push) rememberTrigger();
@@ -431,6 +551,7 @@ export default function JournalApp({ posts }: Props) {
   }
 
   async function openArticle(post: PostSummary, push = true) {
+    interruptPanelClose();
     cancelCharge();
     if (push) rememberTrigger();
     if (push && liveView.current.panel) {
@@ -494,7 +615,7 @@ export default function JournalApp({ posts }: Props) {
     }
     const oldOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    animatePanel(true, category);
+    if (!pendingClose.current) animatePanel(true, category);
     const first = panelRef.current?.querySelector<HTMLElement>(
       panel === "search" ? "input" : "button",
     );
@@ -502,11 +623,13 @@ export default function JournalApp({ posts }: Props) {
     return () => {
       document.body.style.overflow = oldOverflow;
     };
-  }, [panel, category]);
+  }, [panel, category, panelRevision]);
 
   useEffect(() => {
     if (panel !== "article") return;
-    const reframe = () => animatePanel(true, category);
+    const reframe = () => {
+      if (!pendingClose.current) animatePanel(true, category);
+    };
     window.addEventListener("resize", reframe);
     return () => window.removeEventListener("resize", reframe);
   }, [panel, category, reducedMotion]);
@@ -631,11 +754,7 @@ export default function JournalApp({ posts }: Props) {
           href="/"
           onClick={(event) => {
             event.preventDefault();
-            if (panel) closePanel();
-            window.scrollTo({
-              top: 0,
-              behavior: reducedMotion ? "instant" : "smooth",
-            });
+            closePanel(true, true);
           }}
         >
           <span className="orbit-mark" aria-hidden="true" />
@@ -648,11 +767,7 @@ export default function JournalApp({ posts }: Props) {
             href="/"
             onClick={(event) => {
               event.preventDefault();
-              if (panel) closePanel();
-              window.scrollTo({
-                top: 0,
-                behavior: reducedMotion ? "instant" : "smooth",
-              });
+              closePanel(true, true);
             }}
           >
             首页
@@ -760,6 +875,7 @@ export default function JournalApp({ posts }: Props) {
           <div
             className="world-viewport"
             ref={viewportRef}
+            data-encounter="wide"
             onPointerMove={(event) => {
               if (panel) return;
               const r = event.currentTarget.getBoundingClientRect();
@@ -792,7 +908,7 @@ export default function JournalApp({ posts }: Props) {
                   onCategory={(cat) => openList("category", cat)}
                   onHover={onHover}
                   onHoldStart={startHold}
-                  onHoldEnd={cancelCharge}
+                  onHoldEnd={endHold}
                   onActivate={activate}
                   onReady={(available) => {
                     setReady(true);
@@ -808,7 +924,7 @@ export default function JournalApp({ posts }: Props) {
                 ready={encounterReady}
                 onReady={() => setEncounterReady(true)}
                 onHoldStart={startHold}
-                onHoldEnd={cancelCharge}
+                onHoldEnd={endHold}
                 onActivate={activate}
               />
             )}
@@ -851,9 +967,9 @@ export default function JournalApp({ posts }: Props) {
                   className="mobile-wake"
                   disabled={phase === "awake" || phase === "awakening"}
                   onPointerDown={startHold}
-                  onPointerUp={cancelCharge}
-                  onPointerCancel={cancelCharge}
-                  onLostPointerCapture={cancelCharge}
+                  onPointerUp={endHold}
+                  onPointerCancel={endHold}
+                  onLostPointerCapture={endHold}
                   onClick={(event) => {
                     if (event.detail === 0) activate();
                   }}
@@ -890,7 +1006,6 @@ export default function JournalApp({ posts }: Props) {
               posts={posts}
               reducedMotion={reducedMotion}
               panelOpen={!!panel}
-              onEncounterChange={setAtEncounter}
               onArticle={(post) => void openArticle(post)}
               onAll={() => openList("all")}
             />

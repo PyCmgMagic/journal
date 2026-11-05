@@ -9,7 +9,7 @@ interface Props {
   ready: boolean;
   onReady: () => void;
   onHoldStart: (event: PointerEvent<HTMLButtonElement>) => void;
-  onHoldEnd: () => void;
+  onHoldEnd: (event: PointerEvent<HTMLButtonElement>) => void;
   onActivate: () => void;
 }
 

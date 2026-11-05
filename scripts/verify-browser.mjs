@@ -80,6 +80,36 @@ try {
   );
   assert.ok(earlyProgress > 0.1 && earlyProgress < 0.25);
   assert.equal(await page.locator(".latest-section").count(), 0);
+  const handoffScroll = Math.round(travelDistance * 0.42);
+  const readHandoff = () =>
+    page
+      .locator(".world-viewport")
+      .evaluate((element) =>
+        Number(element.style.getPropertyValue("--encounter-blend")),
+      );
+  await page.mouse.wheel(0, handoffScroll - 450);
+  await delay(850);
+  const handoff = await readHandoff();
+  assert.ok(
+    handoff > 0.05 && handoff < 0.95,
+    "the wheel stops within the handoff",
+  );
+  await delay(600);
+  assert.equal(
+    await readHandoff(),
+    handoff,
+    "a stopped scroll must not advance to the close shot",
+  );
+  await page.mouse.wheel(0, 450 - handoffScroll);
+  await delay(850);
+  assert.equal(
+    await readHandoff(),
+    0,
+    "reverse scroll must reverse the handoff",
+  );
+  mark("scroll-linked handoff stays at the wheel position and reverses", {
+    handoff,
+  });
   await page.mouse.wheel(0, Math.round(travelDistance * 0.52) - 450);
   await delay(1500);
   const near = await camera(page);
@@ -128,6 +158,28 @@ try {
     "continuous journey: longer range, scene retained at end, article and history return",
     { travelDistance, earlyProgress },
   );
+
+  await page.getByRole("button", { name: "03日志", exact: true }).click();
+  await page.locator(".scene-journal-post").first().click();
+  await page.locator(".article-panel h1").waitFor();
+  await page.getByRole("link", { name: "首页", exact: true }).click();
+  await page.locator(".content-panel").waitFor({ state: "detached" });
+  assert.equal(await page.evaluate(() => scrollY), 0);
+  const articlesLink = page.getByRole("link", { name: "文章", exact: true });
+  await articlesLink.click();
+  await page.getByRole("button", { name: "返回观测站" }).click();
+  await articlesLink.click();
+  await delay(720);
+  assert.equal(await page.locator(".content-panel").isVisible(), true);
+  assert.equal(
+    await page
+      .locator(".content-panel")
+      .evaluate((e) => getComputedStyle(e).opacity),
+    "1",
+  );
+  await page.getByRole("button", { name: "返回观测站" }).click();
+  await page.locator(".content-panel").waitFor({ state: "detached" });
+  mark("Home keeps its destination and reopening cancels the previous exit");
 
   const stone = page.locator(".monolith-control");
   await stone.hover();
@@ -179,7 +231,9 @@ try {
   await screenshot(page, "04-reading.png");
   await screenshot(page, "reading-redesign-desktop.png");
   const articleBounds = await page.locator(".article-panel").boundingBox();
-  const bodyBounds = await page.locator(".reading-layout > .prose").boundingBox();
+  const bodyBounds = await page
+    .locator(".reading-layout > .prose")
+    .boundingBox();
   const tocBounds = await page.locator(".desktop-reading-toc").boundingBox();
   assert.equal(articleBounds.x, 0);
   assert.equal(articleBounds.width, 1440);
@@ -187,7 +241,11 @@ try {
   assert.ok(tocBounds.x > bodyBounds.x + bodyBounds.width);
   await page.locator(".article-body p").first().click({ clickCount: 3 });
   assert.ok((await page.evaluate(() => getSelection().toString())).length > 5);
-  mark("reference 07 full-width reading and selectable text", { articleBounds, bodyBounds, tocBounds });
+  mark("reference 07 full-width reading and selectable text", {
+    articleBounds,
+    bodyBounds,
+    tocBounds,
+  });
   const articleUrl = page.url();
   await page.locator(".panel-toc button").last().click();
   await delay(600);
@@ -301,9 +359,17 @@ try {
   await phone.locator(".mobile-reading-toc summary").tap();
   await phone.locator(".mobile-reading-toc button").last().tap();
   await delay(600);
-  assert.equal(await phone.locator(".mobile-reading-toc").getAttribute("open"), null);
-  assert.ok((await phone.locator(".panel-scroll").evaluate((e) => e.scrollTop)) > 0);
-  assert.equal(await phone.evaluate(() => document.documentElement.scrollWidth), 390);
+  assert.equal(
+    await phone.locator(".mobile-reading-toc").getAttribute("open"),
+    null,
+  );
+  assert.ok(
+    (await phone.locator(".panel-scroll").evaluate((e) => e.scrollTop)) > 0,
+  );
+  assert.equal(
+    await phone.evaluate(() => document.documentElement.scrollWidth),
+    390,
+  );
   await phone.getByRole("button", { name: "返回观测站" }).tap();
   await phone.locator(".content-panel").waitFor({ state: "detached" });
   await phone.setViewportSize({ width: 320, height: 740 });

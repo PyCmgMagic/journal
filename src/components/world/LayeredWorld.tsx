@@ -62,7 +62,7 @@ void main(){vUv=uv;vPixel=vec2(uv.x,1.-uv.y);vec3 p=position;
 if(uKind==4.){p.y+=sin(uTime*2.2+uv.x*90.)*.012*smoothstep(.57,.62,uv.x);}
 if(uKind==8.){p.x+=sin(uTime*.8+uv.y*14.)*.008*(.4+uResponse);}
 gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}`;
-const frag = `varying vec2 vUv;varying vec2 vPixel;uniform sampler2D uMap;uniform float uKind;uniform float uCharge;uniform float uStone;uniform float uWave;uniform float uLamp;uniform float uTime;uniform float uHover;
+const frag = `varying vec2 vUv;varying vec2 vPixel;uniform sampler2D uMap;uniform float uKind;uniform float uCharge;uniform float uStone;uniform float uWave;uniform float uLamp;uniform float uTime;uniform float uHover;uniform float uOpacity;
 void main(){vec4 c=texture2D(uMap,vUv);if(c.a<.4)discard;float dist=length((vPixel-vec2(.807,.44))*vec2(1.0,.48));
 if(uKind==1.){float ground=smoothstep(-.02,.025,c.g-c.r);float awake=1.-smoothstep(uWave-.012,uWave+.012,dist);float rim=exp(-abs(dist-uWave)*190.)*step(.001,uWave)*(1.-smoothstep(.6,.8,uWave));c.rgb=mix(c.rgb,c.rgb*vec3(.96,1.06,.99),awake*.7*ground);c.rgb+=vec3(.25,.28,.08)*rim*ground;}
 if(uKind==3.){
@@ -76,7 +76,7 @@ if(uKind==3.){
   c.rgb=mix(c.rgb,vec3(1.,.94,.57),glow*.92);
 }
 if(uKind>=5.&&uKind<=7.){c.rgb*=.74+.26*uLamp;c.rgb+=vec3(.20,.13,.02)*(uLamp*.55+uHover*.7);}
-gl_FragColor=vec4(c.rgb,1.);}`;
+gl_FragColor=vec4(c.rgb,uOpacity);}`;
 
 function geometry(layer: ArtLayer) {
   const f = (12 - layer.z) / 12;
@@ -130,6 +130,7 @@ function Layer({
   const mesh = useRef<Mesh>(null);
   const material = useRef<ShaderMaterial>(null);
   const g = useMemo(() => geometry(layer), [layer]);
+  const replacedInCloseup = layer.id === "traveler" || layer.id === "scarf";
   const uniforms = useMemo(
     () => ({
       uMap: { value: texture },
@@ -141,6 +142,7 @@ function Layer({
       uLamp: { value: 0 },
       uHover: { value: 0 },
       uResponse: { value: 0 },
+      uOpacity: { value: 1 },
     }),
     [texture, layer.kind],
   );
@@ -148,6 +150,11 @@ function Layer({
   useFrame(() => {
     if (!material.current || !mesh.current) return;
     const u = material.current.uniforms;
+    if (replacedInCloseup) {
+      u.uOpacity.value =
+        1 - smoothRange(0.42, matchStart, runtime.encounterProgress);
+      mesh.current.visible = u.uOpacity.value > 0;
+    }
     u.uTime.value = runtime.time;
     u.uCharge.value = runtime.charge;
     u.uStone.value = runtime.stoneLight;
@@ -183,6 +190,8 @@ function Layer({
         uniforms={uniforms}
         vertexShader={vert}
         fragmentShader={frag}
+        transparent={replacedInCloseup}
+        depthWrite={!replacedInCloseup}
         side={2}
       />
     </mesh>
@@ -369,7 +378,7 @@ function Scene({ runtime, reducedMotion, reading, readCount, onReady }: Props) {
   const terrain = useRef<Group>(null);
   const { camera, size, invalidate, gl } = useThree();
   const point = useMemo(() => new Vector3(), []);
-  const smooth = useRef({ x: 0, y: 0, z: 12 });
+  const smooth = useRef({ x: 0, y: 0, z: 0 });
   const host = useRef<HTMLElement | null>(null);
   const viewportSize = useRef({ width: 0, height: 0 });
   const lastMetrics = useRef(0);
@@ -388,6 +397,13 @@ function Scene({ runtime, reducedMotion, reading, readCount, onReady }: Props) {
       observer.disconnect();
     };
   }, [gl, invalidate, runtime]);
+  useEffect(() => {
+    if (!(camera instanceof PerspectiveCamera)) return;
+    camera.fov = (2 * Math.atan(H / 200 / 12) * 180) / Math.PI;
+    camera.aspect = size.width / size.height;
+    camera.updateProjectionMatrix();
+    invalidate();
+  }, [camera, size.width, size.height, invalidate]);
   useFrame((_, delta) => {
     if (!runtime.paused && !reducedMotion)
       runtime.time += Math.min(delta, 0.05) * (reading ? 0.12 : 1);
@@ -404,21 +420,21 @@ function Scene({ runtime, reducedMotion, reading, readCount, onReady }: Props) {
       (3 - 2 * pushIn) *
       returnWide *
       (1 - runtime.stoneLight);
-    const x =
-      (reducedMotion ? 0 : runtime.pointerX * 0.42) +
-      runtime.focusX +
-      curve * 1.45 +
-      lean * 1.6 -
-      settle * 0.18;
-    const y = (reducedMotion ? 0 : runtime.pointerY * 0.18) + curve * 0.22;
-    const z =
-      12 - curve * 1.75 - lean * 1.05 + settle * 0.24 - runtime.focusZoom;
+    // ScrollTrigger already smooths the route. Damp only the independent pointer and panel offsets.
+    const offsetX =
+      (reducedMotion ? 0 : runtime.pointerX * 0.42) + runtime.focusX;
+    const offsetY = reducedMotion ? 0 : runtime.pointerY * 0.18;
+    const offsetZ = -runtime.focusZoom;
     const mix = reducedMotion ? 1 : 1 - Math.exp(-delta * 5);
-    smooth.current.x += (x - smooth.current.x) * mix;
-    smooth.current.y += (y - smooth.current.y) * mix;
-    smooth.current.z += (z - smooth.current.z) * mix;
-    camera.position.set(smooth.current.x, smooth.current.y, smooth.current.z);
-    let aimX = smooth.current.x * 0.82 + lean * 0.36;
+    smooth.current.x += (offsetX - smooth.current.x) * mix;
+    smooth.current.y += (offsetY - smooth.current.y) * mix;
+    smooth.current.z += (offsetZ - smooth.current.z) * mix;
+    const x = smooth.current.x + curve * 1.45 + lean * 1.6 - settle * 0.18;
+    const y = smooth.current.y + curve * 0.22;
+    const z =
+      smooth.current.z + 12 - curve * 1.75 - lean * 1.05 + settle * 0.24;
+    camera.position.set(x, y, z);
+    let aimX = x * 0.82 + lean * 0.36;
     let aimY = curve * 0.54 + lean * 0.43;
     const approachToSigil = smoothRange(
       0,
@@ -511,11 +527,6 @@ function Scene({ runtime, reducedMotion, reading, readCount, onReady }: Props) {
       aimY += (matchY - aimY) * approachToSigil;
     }
     camera.lookAt(aimX, aimY, 0);
-    if (camera instanceof PerspectiveCamera) {
-      camera.fov = (2 * Math.atan(H / 200 / 12) * 180) / Math.PI;
-      camera.aspect = size.width / size.height;
-      camera.updateProjectionMatrix();
-    }
     camera.updateMatrixWorld();
     terrain.current?.updateMatrixWorld();
     runtime.currentPosition.copy(camera.position);
@@ -562,7 +573,12 @@ function Scene({ runtime, reducedMotion, reading, readCount, onReady }: Props) {
       });
       lastMetrics.current = runtime.time;
     }
-    if (Math.abs(x - smooth.current.x) + Math.abs(z - smooth.current.z) > 0.001)
+    if (
+      Math.abs(offsetX - smooth.current.x) +
+        Math.abs(offsetY - smooth.current.y) +
+        Math.abs(offsetZ - smooth.current.z) >
+      0.001
+    )
       invalidate();
   }, -1);
   const renderLayer = (l: ArtLayer) => (

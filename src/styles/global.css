@@ -208,6 +208,7 @@
 }
 .encounter-touch {
   position: absolute;
+  opacity: var(--encounter-controls, 0);
   width: clamp(60px, 6vw, 92px);
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
@@ -256,8 +257,7 @@
 [data-encounter]:not([data-encounter="wide"]) :is(.paint-lamp,.paint-stone,.mobile-world-controls,.world-caption) {
   visibility: hidden;
 }
-.scene-journal { filter: opacity(calc(1 - var(--encounter-blend, 0))); }
-.journal-app[data-phase="charging"]:has(.monolith-encounter[data-ready="true"]) .scene-journal {
+[data-encounter]:not([data-encounter="wide"]) .scene-journal {
   visibility: hidden !important;
 }
 @media (min-width: 761px) {

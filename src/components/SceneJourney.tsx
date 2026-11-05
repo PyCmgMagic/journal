@@ -5,6 +5,11 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { PostSummary } from "../lib/post-types";
 import { categoryNames } from "../lib/post-types";
 import type { createMotionRuntime } from "./world/motion-runtime";
+import {
+  encounterAtScroll,
+  stationPathEnd,
+  stationPathStart,
+} from "./world/encounter-framing";
 
 type Stage = "arrival" | "station" | "logs";
 interface Props {
@@ -12,7 +17,6 @@ interface Props {
   posts: PostSummary[];
   reducedMotion: boolean;
   panelOpen: boolean;
-  onEncounterChange: (near: boolean) => void;
   onArticle: (post: PostSummary) => void;
   onAll: () => void;
 }
@@ -23,6 +27,7 @@ export default function SceneJourney(props: Props) {
   const root = useRef<HTMLDivElement>(null);
   const journal = useRef<HTMLElement>(null);
   const progressLine = useRef<HTMLSpanElement>(null);
+  const prepareTravel = useRef<(destination: number) => void>(() => {});
   const stageRef = useRef<Stage>("arrival");
   const [stage, setStage] = useState<Stage>("arrival");
 
@@ -33,18 +38,18 @@ export default function SceneJourney(props: Props) {
       const track = viewport.closest<HTMLElement>(".world-scroll")!;
       const hero = viewport.querySelector<HTMLElement>(".hero-copy")!;
       const progress = { value: 0 };
-      let inEncounter: boolean | undefined;
+      const path = { weight: 1 };
+      let shortcut = false;
+      let previousScroll = 0;
+      let pathTween: gsap.core.Tween | undefined;
       const sync = () => {
         runtime.scrollProgress = progress.value;
-        runtime.invalidate();
+        runtime.scrollEncounter =
+          encounterAtScroll(progress.value) * path.weight;
+        runtime.syncEncounter();
         if (progressLine.current)
           progressLine.current.style.transform = `scaleX(${progress.value})`;
         viewport.dataset.journeyProgress = progress.value.toFixed(3);
-        const nextEncounter = progress.value >= 0.46 && progress.value <= 0.69;
-        if (nextEncounter !== inEncounter) {
-          inEncounter = nextEncounter;
-          props.onEncounterChange(inEncounter);
-        }
         const next: Stage =
           progress.value < 0.28
             ? "arrival"
@@ -60,6 +65,32 @@ export default function SceneJourney(props: Props) {
         hero.inert = progress.value > 0.22;
         if (journal.current) journal.current.inert = progress.value < 0.8;
       };
+      const resumePath = () => {
+        if (!shortcut) return;
+        shortcut = false;
+        pathTween?.kill();
+        pathTween = gsap.to(path, {
+          weight: 1,
+          duration: reducedMotion ? 0 : 0.2,
+          ease: "none",
+          onUpdate: sync,
+        });
+      };
+      prepareTravel.current = (destination) => {
+        // An explicit jump between the ends can bypass the stop at the stone.
+        if (
+          encounterAtScroll(destination) === 0 &&
+          runtime.scrollEncounter === 0
+        ) {
+          pathTween?.kill();
+          shortcut = true;
+          path.weight = 0;
+        } else {
+          resumePath();
+        }
+      };
+      window.addEventListener("wheel", resumePath, { passive: true });
+      window.addEventListener("touchmove", resumePath, { passive: true });
       gsap.set(journal.current, { autoAlpha: 0, y: reducedMotion ? 0 : 42 });
       const timeline = gsap.timeline({
         defaults: { ease: "none" },
@@ -67,8 +98,22 @@ export default function SceneJourney(props: Props) {
           trigger: track,
           start: "top top",
           end: "bottom bottom",
-          scrub: reducedMotion ? true : 0.45,
+          scrub: reducedMotion ? true : 0.32,
           invalidateOnRefresh: true,
+          onUpdate: (trigger) => {
+            const nextScroll = trigger.progress;
+            const jumpedPastStation =
+              (previousScroll <= stationPathStart &&
+                nextScroll >= stationPathEnd) ||
+              (previousScroll >= stationPathEnd &&
+                nextScroll <= stationPathStart);
+            if (jumpedPastStation) prepareTravel.current(nextScroll);
+            previousScroll = nextScroll;
+          },
+          onRefresh: (trigger) => {
+            previousScroll = trigger.progress;
+          },
+          onScrubComplete: resumePath,
         },
         onUpdate: sync,
       });
@@ -83,6 +128,10 @@ export default function SceneJourney(props: Props) {
         .to(journal.current, { autoAlpha: 1, y: 0, duration: 0.18 }, 0.74);
       sync();
       return () => {
+        pathTween?.kill();
+        prepareTravel.current = () => {};
+        window.removeEventListener("wheel", resumePath);
+        window.removeEventListener("touchmove", resumePath);
         hero.inert = false;
       };
     },
@@ -95,6 +144,7 @@ export default function SceneJourney(props: Props) {
     const viewport = track?.querySelector<HTMLElement>(".world-viewport");
     if (!track || !viewport) return;
     const distance = track.offsetHeight - viewport.offsetHeight;
+    prepareTravel.current(progress);
     window.scrollTo({
       top:
         track.getBoundingClientRect().top +

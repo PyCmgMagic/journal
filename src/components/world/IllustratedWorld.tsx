@@ -15,7 +15,7 @@ interface Props {
   onCategory: (category: Category) => void;
   onHover: (category: Category | null) => void;
   onHoldStart: (event: PointerEvent<HTMLButtonElement>) => void;
-  onHoldEnd: () => void;
+  onHoldEnd: (event: PointerEvent<HTMLButtonElement>) => void;
   onActivate: () => void;
 }
 
