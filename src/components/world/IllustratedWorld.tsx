@@ -10,6 +10,7 @@ interface Props {
   reading: boolean;
   activeCategory: Category | null;
   readCount: number;
+  stoneAvailable: boolean;
   onReady: (available: boolean) => void;
   onCategory: (category: Category) => void;
   onHover: (category: Category | null) => void;
@@ -82,6 +83,7 @@ export default function IllustratedWorld(props: Props) {
               <button
                 className="monolith-control"
                 aria-label="长按唤醒观测站"
+                disabled={!props.stoneAvailable}
                 onPointerDown={onHoldStart}
                 onPointerUp={onHoldEnd}
                 onPointerCancel={onHoldEnd}

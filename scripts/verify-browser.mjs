@@ -161,7 +161,7 @@ try {
   );
   assert.deepEqual(effects.lamps, [1, 1, 1]);
   assert.equal(effects.stars, 1);
-  await stone.click();
+  assert.equal(await stone.isDisabled(), true);
   await phase(page, "awake");
   mark("complete ritual and no reentry", effects);
 

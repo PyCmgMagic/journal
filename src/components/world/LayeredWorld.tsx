@@ -29,8 +29,17 @@ import {
 } from "./layer-data";
 import type { Category } from "../../lib/world-machine";
 import type { createMotionRuntime } from "./motion-runtime";
+import WakeTrail from "./WakeTrail";
+import {
+  encounterScale,
+  farSigil,
+  nearSigil,
+  matchStart,
+  smoothRange,
+} from "./encounter-framing";
 
 type Runtime = ReturnType<typeof createMotionRuntime>;
+type PlanetFraming = { x: number; y: number; z: number };
 interface Props {
   runtime: Runtime;
   reducedMotion: boolean;
@@ -48,7 +57,16 @@ gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}`;
 const frag = `varying vec2 vUv;varying vec2 vPixel;uniform sampler2D uMap;uniform float uKind;uniform float uCharge;uniform float uStone;uniform float uWave;uniform float uLamp;uniform float uTime;uniform float uHover;
 void main(){vec4 c=texture2D(uMap,vUv);if(c.a<.4)discard;float dist=length((vPixel-vec2(.807,.44))*vec2(1.0,.48));
 if(uKind==1.){float ground=smoothstep(-.02,.025,c.g-c.r);float awake=1.-smoothstep(uWave-.012,uWave+.012,dist);float rim=exp(-abs(dist-uWave)*190.)*step(.001,uWave)*(1.-smoothstep(.6,.8,uWave));c.rgb=mix(c.rgb,c.rgb*vec3(.96,1.06,.99),awake*.7*ground);c.rgb+=vec3(.25,.28,.08)*rim*ground;}
-if(uKind==3.){float rune=pow(max(0.,sin(vUv.y*145.+uCharge*5.)),12.);c.rgb+=vec3(.16,.30,.25)*(uCharge*.65+uStone*.55)*(.4+rune);}
+if(uKind==3.){
+  vec2 p=vPixel*vec2(1672.,941.);
+  vec2 q=(p-vec2(1336.,179.))*vec2(1.,.86);
+  float ring=abs(length(q)-15.3);
+  float stem=abs(p.x-1336.5)+(1.-step(197.,p.y)*step(p.y,285.))*30.;
+  float distanceToRune=min(ring,stem);
+  float reveal=smoothstep(0.,22.,p.y-(290.-uCharge*127.));
+  float glow=exp(-distanceToRune*.36)*max(uStone*.9,uCharge*reveal);
+  c.rgb=mix(c.rgb,vec3(1.,.94,.57),glow*.92);
+}
 if(uKind>=5.&&uKind<=7.){c.rgb*=.74+.26*uLamp;c.rgb+=vec3(.20,.13,.02)*(uLamp*.55+uHover*.7);}
 gl_FragColor=vec4(c.rgb,1.);}`;
 
@@ -94,10 +112,12 @@ function Layer({
   layer,
   texture,
   runtime,
+  planetFraming,
 }: {
   layer: ArtLayer;
   texture: any;
   runtime: Runtime;
+  planetFraming?: { current: PlanetFraming };
 }) {
   const mesh = useRef<Mesh>(null);
   const material = useRef<ShaderMaterial>(null);
@@ -141,6 +161,12 @@ function Layer({
       layer.kind === 2
         ? Math.sin(runtime.time * 0.13) * 0.015 * (1 + runtime.response)
         : 0;
+    if (planetFraming)
+      mesh.current.position.set(
+        planetFraming.current.x,
+        planetFraming.current.y,
+        planetFraming.current.z,
+      );
   });
   return (
     <mesh ref={mesh} geometry={g} position={[0, 0, layer.z]}>
@@ -177,16 +203,29 @@ function Atmosphere({
     return g;
   }, []);
   const sky = useMemo(() => {
-    const a = [];
-    for (let i = 0; i < 10; i++)
-      a.push(-3.1 + i * 0.34, 3.3 + Math.sin(i * 1.24) * 0.34, 1);
+    const a = [
+      -3.62, 2.12, 1, -3.17, 2.81, 1, -2.44, 3.12, 1, -1.79, 3.58, 1, -2.45,
+      2.61, 1, -1.36, 3.36, 1, -1.02, 3.58, 1, -0.71, 3.34, 1, -0.32, 3.58, 1,
+      0.04, 3.45, 1,
+    ];
     const g = new BufferGeometry();
     g.setAttribute("position", new Float32BufferAttribute(a, 3));
     const segments = [];
-    for (let i = 0; i < 9; i++)
+    const edges = [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [2, 4],
+      [3, 5],
+      [5, 6],
+      [6, 7],
+      [7, 8],
+      [8, 9],
+    ];
+    for (const [start, end] of edges)
       segments.push(
-        ...a.slice(i * 3, i * 3 + 3),
-        ...a.slice(i * 3 + 3, i * 3 + 6),
+        ...a.slice(start * 3, start * 3 + 3),
+        ...a.slice(end * 3, end * 3 + 3),
       );
     const l = new BufferGeometry();
     l.setAttribute("position", new Float32BufferAttribute(segments, 3));
@@ -196,10 +235,10 @@ function Atmosphere({
     () => ({
       uTime: { value: 0 },
       uCharge: { value: 0 },
-      uStars: { value: 0 },
     }),
     [],
   );
+  const starUniforms = useMemo(() => ({ uLight: { value: 0 } }), []);
   useEffect(
     () => () => {
       particles.dispose();
@@ -215,7 +254,7 @@ function Atmosphere({
     }
     if (stars.current) {
       stars.current.visible = runtime.stars > 0.01;
-      stars.current.material.opacity = runtime.stars;
+      stars.current.material.uniforms.uLight.value = runtime.stars;
       stars.current.geometry.setDrawRange(0, Math.min(10, 6 + readCount));
     }
     if (lines.current) {
@@ -239,11 +278,11 @@ function Atmosphere({
         />
       </points>
       <points ref={stars} geometry={sky.g}>
-        <pointsMaterial
-          color="#fff4bc"
-          size={0.095}
+        <shaderMaterial
+          uniforms={starUniforms}
+          vertexShader={`void main(){gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);gl_PointSize=28.;}`}
+          fragmentShader={`uniform float uLight;void main(){vec2 p=abs(gl_PointCoord-.5);float d=length(p);float halo=exp(-d*10.)*(1.-smoothstep(.25,.5,d));float cross=exp(-min(p.x,p.y)*78.)*exp(-max(p.x,p.y)*7.5)*(1.-smoothstep(.30,.5,d));float core=1.-smoothstep(.03,.11,d);gl_FragColor=vec4(1.,.94,.70,max(core,max(cross,halo))*uLight);}`}
           transparent
-          opacity={0}
           depthWrite={false}
         />
       </points>
@@ -294,7 +333,7 @@ function LampPool({
   return (
     <mesh
       position={[((x - W / 2) / 100) * f, ((H / 2 - y - 16) / 100) * f, z]}
-      scale={[0.9, 0.32, 1]}
+      scale={[1.25, 0.44, 1]}
     >
       <planeGeometry args={[1, 1]} />
       <shaderMaterial
@@ -317,18 +356,27 @@ function Scene({ runtime, reducedMotion, reading, readCount, onReady }: Props) {
     "/images/layers/planet-cutout.png",
   ]);
   for (const t of [original, sky, island, planet]) t.colorSpace = NoColorSpace;
-  const background = useMemo(() => fullLayer("sky", -4), []);
+  const background = useMemo(() => fullLayer("sky", -26), []);
+  const planetFraming = useRef<PlanetFraming>({ x: 0, y: 0, z: LAYERS[0].z });
   const { camera, size, invalidate, gl } = useThree();
   const point = useMemo(() => new Vector3(), []);
   const smooth = useRef({ x: 0, y: 0, z: 12 });
   const host = useRef<HTMLElement | null>(null);
+  const viewportSize = useRef({ width: 0, height: 0 });
   const lastMetrics = useRef(0);
   useEffect(() => {
     host.current = gl.domElement.closest(".layer-world");
+    const viewport = host.current?.closest<HTMLElement>(".world-viewport");
+    const observer = new ResizeObserver(([entry]) => {
+      viewportSize.current = entry.contentRect;
+      invalidate();
+    });
+    if (viewport) observer.observe(viewport);
     runtime.invalidate = invalidate;
     onReady();
     return () => {
       runtime.invalidate = () => {};
+      observer.disconnect();
     };
   }, [gl, invalidate, runtime]);
   useFrame((_, delta) => {
@@ -339,26 +387,103 @@ function Scene({ runtime, reducedMotion, reading, readCount, onReady }: Props) {
     const approach = Math.min(1, s / 0.72);
     const settle = Math.max(0, (s - 0.72) / 0.28);
     const curve = approach * approach * (3 - 2 * approach);
+    const pushIn = Math.min(1, Math.max(0, (s - 0.09) / 0.38));
+    const returnWide = Math.min(1, Math.max(0, (0.78 - s) / 0.13));
+    const lean =
+      pushIn *
+      pushIn *
+      (3 - 2 * pushIn) *
+      returnWide *
+      (1 - runtime.stoneLight);
     const x =
       (reducedMotion ? 0 : runtime.pointerX * 0.42) +
       runtime.focusX +
-      curve * 1.45 -
+      curve * 1.45 +
+      lean * 1.6 -
       settle * 0.18;
     const y = (reducedMotion ? 0 : runtime.pointerY * 0.18) + curve * 0.22;
-    const z = 12 - curve * 1.75 + settle * 0.24 - runtime.focusZoom;
+    const z =
+      12 - curve * 1.75 - lean * 1.05 + settle * 0.24 - runtime.focusZoom;
     const mix = reducedMotion ? 1 : 1 - Math.exp(-delta * 5);
     smooth.current.x += (x - smooth.current.x) * mix;
     smooth.current.y += (y - smooth.current.y) * mix;
     smooth.current.z += (z - smooth.current.z) * mix;
     camera.position.set(smooth.current.x, smooth.current.y, smooth.current.z);
-    camera.lookAt(smooth.current.x * 0.82, curve * 0.54, 0);
+    let aimX = smooth.current.x * 0.82 + lean * 0.36;
+    let aimY = curve * 0.54 + lean * 0.43;
+    const approachToSigil = smoothRange(
+      0,
+      matchStart,
+      runtime.encounterProgress,
+    );
+    const viewport = viewportSize.current;
+    const planetDepth = LAYERS[0].z;
+    planetFraming.current.x = 0;
+    planetFraming.current.y = 0;
+    planetFraming.current.z = planetDepth;
+    if (approachToSigil > 0 && viewport.height > 0) {
+      // At the cut both illustrations project the engraved circle to the same screen position.
+      const mobile = viewport.width <= 760;
+      const artworkScale = Math.max(viewport.width / W, viewport.height / H);
+      const matchHeight = mobile ? viewport.height : size.height;
+      const sourceScale =
+        (artworkScale *
+          encounterScale(runtime.encounterProgress) *
+          nearSigil.radius) /
+        farSigil.radius;
+      const depthScale = (12 - farSigil.depth) / 12;
+      const unitsPerPixel = depthScale / (100 * sourceScale);
+      const anchorX = (nearSigil.x - W * (mobile ? 0.601 : 0.5)) * artworkScale;
+      const anchorY = nearSigil.y * artworkScale - matchHeight / 2;
+      const matchX =
+        ((farSigil.x - W / 2) * depthScale) / 100 - anchorX * unitsPerPixel;
+      const matchY =
+        ((H / 2 - farSigil.y) * depthScale) / 100 + anchorY * unitsPerPixel;
+      const matchZ =
+        farSigil.depth +
+        (matchHeight * (12 - farSigil.depth)) / (H * sourceScale);
+
+      // Keep the distant planet from ballooning during the dolly. Match the left ring tip
+      // to the close illustration as the camera arrives at the engraving.
+      const closePixelScale =
+        artworkScale * encounterScale(runtime.encounterProgress);
+      const planetSizeRatio = 1.03;
+      const distanceToPlanet =
+        (matchHeight * (12 - planetDepth)) /
+        (H * closePixelScale * planetSizeRatio);
+      const planetUnitsPerPixel =
+        (12 - planetDepth) / (1200 * closePixelScale * planetSizeRatio);
+      const ringTipX = anchorX + (277 - nearSigil.x) * closePixelScale;
+      const ringTipY = anchorY + (453 - nearSigil.y) * closePixelScale;
+      const planetArtScale = (12 - planetDepth) / 1200;
+      planetFraming.current.x =
+        approachToSigil *
+        (matchX +
+          ringTipX * planetUnitsPerPixel -
+          (610 - W / 2) * planetArtScale);
+      planetFraming.current.y =
+        approachToSigil *
+        (matchY -
+          ringTipY * planetUnitsPerPixel -
+          (H / 2 - 269) * planetArtScale);
+      planetFraming.current.z =
+        planetDepth +
+        approachToSigil * (matchZ - distanceToPlanet - planetDepth);
+      camera.position.x += (matchX - camera.position.x) * approachToSigil;
+      camera.position.y += (matchY - camera.position.y) * approachToSigil;
+      camera.position.z += (matchZ - camera.position.z) * approachToSigil;
+      aimX += (matchX - aimX) * approachToSigil;
+      aimY += (matchY - aimY) * approachToSigil;
+    }
+    camera.lookAt(aimX, aimY, 0);
     if (camera instanceof PerspectiveCamera) {
       camera.fov = (2 * Math.atan(H / 200 / 12) * 180) / Math.PI;
       camera.aspect = size.width / size.height;
       camera.updateProjectionMatrix();
     }
+    camera.updateMatrixWorld();
     runtime.currentPosition.copy(camera.position);
-    runtime.currentTarget.set(smooth.current.x * 0.82, curve * 0.54, 0);
+    runtime.currentTarget.set(aimX, aimY, 0);
     if (host.current) {
       for (const [id, [px, py, depth]] of Object.entries(HOTSPOTS)) {
         const f = (12 - depth) / 12;
@@ -386,12 +511,11 @@ function Scene({ runtime, reducedMotion, reading, readCount, onReady }: Props) {
       }
       host.current.style.setProperty("--charge", String(runtime.charge));
     }
-    if (gl.domElement && (reading || runtime.time - lastMetrics.current > 0.2)) {
-      gl.domElement.dataset.camera = JSON.stringify([
-        smooth.current.x,
-        smooth.current.y,
-        smooth.current.z,
-      ]);
+    if (
+      gl.domElement &&
+      (reading || runtime.time - lastMetrics.current > 0.2)
+    ) {
+      gl.domElement.dataset.camera = JSON.stringify(camera.position.toArray());
       gl.domElement.dataset.effects = JSON.stringify({
         charge: runtime.charge,
         stone: runtime.stoneLight,
@@ -419,11 +543,15 @@ function Scene({ runtime, reducedMotion, reading, readCount, onReady }: Props) {
                 : original
           }
           runtime={runtime}
+          planetFraming={
+            l.id === "planet-and-rings" ? planetFraming : undefined
+          }
         />
       ))}
       {(["notes", "practice", "reading"] as const).map((id, index) => (
         <LampPool key={id} id={id} index={index} runtime={runtime} />
       ))}
+      <WakeTrail runtime={runtime} />
       <Atmosphere runtime={runtime} readCount={readCount} />
     </>
   );
@@ -470,6 +598,7 @@ export default function LayeredWorld(props: Props) {
     <Boundary onFallback={props.onFallback}>
       <Canvas
         className="layer-canvas"
+        resize={{ offsetSize: true }}
         camera={{ position: [0, 0, 12], near: 0.1, far: 100 }}
         dpr={[1, 1.3]}
         flat

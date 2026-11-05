@@ -12,8 +12,7 @@ interface Props {
   posts: PostSummary[];
   reducedMotion: boolean;
   panelOpen: boolean;
-  staticScene: boolean;
-  awake: boolean;
+  onEncounterChange: (near: boolean) => void;
   onArticle: (post: PostSummary) => void;
   onAll: () => void;
 }
@@ -33,14 +32,19 @@ export default function SceneJourney(props: Props) {
       const viewport = root.current!.closest<HTMLElement>(".world-viewport")!;
       const track = viewport.closest<HTMLElement>(".world-scroll")!;
       const hero = viewport.querySelector<HTMLElement>(".hero-copy")!;
-      const note = root.current!.querySelector<HTMLElement>(".station-note")!;
       const progress = { value: 0 };
+      let inEncounter: boolean | undefined;
       const sync = () => {
         runtime.scrollProgress = progress.value;
         runtime.invalidate();
         if (progressLine.current)
           progressLine.current.style.transform = `scaleX(${progress.value})`;
         viewport.dataset.journeyProgress = progress.value.toFixed(3);
+        const nextEncounter = progress.value >= 0.46 && progress.value <= 0.69;
+        if (nextEncounter !== inEncounter) {
+          inEncounter = nextEncounter;
+          props.onEncounterChange(inEncounter);
+        }
         const next: Stage =
           progress.value < 0.28
             ? "arrival"
@@ -56,7 +60,6 @@ export default function SceneJourney(props: Props) {
         hero.inert = progress.value > 0.22;
         if (journal.current) journal.current.inert = progress.value < 0.8;
       };
-      gsap.set(note, { autoAlpha: 0, y: reducedMotion ? 0 : 22 });
       gsap.set(journal.current, { autoAlpha: 0, y: reducedMotion ? 0 : 42 });
       const timeline = gsap.timeline({
         defaults: { ease: "none" },
@@ -76,12 +79,6 @@ export default function SceneJourney(props: Props) {
           { autoAlpha: 1, y: 0 },
           { autoAlpha: 0, y: reducedMotion ? 0 : -42, duration: 0.19 },
           0.06,
-        )
-        .to(note, { autoAlpha: 1, y: 0, duration: 0.11 }, 0.28)
-        .to(
-          note,
-          { autoAlpha: 0, y: reducedMotion ? 0 : -18, duration: 0.1 },
-          0.62,
         )
         .to(journal.current, { autoAlpha: 1, y: 0, duration: 0.18 }, 0.74);
       sync();
@@ -115,23 +112,6 @@ export default function SceneJourney(props: Props) {
 
   return (
     <div ref={root} className="scene-journey" inert={panelOpen}>
-      <aside className="station-note" aria-hidden={stage !== "station"}>
-        <p className="eyebrow">沿着好奇，慢慢靠近</p>
-        <h2>
-          这里，收留
-          <br />
-          每一次探索。
-        </h2>
-        <p>
-          {props.staticScene
-            ? "点亮一段思考，从一篇日志开始。"
-            : props.awake
-              ? "光已经亮起。沿着小径，找一篇想读的日志。"
-              : "长按青色石碑，让这座观测站醒来。"}
-        </p>
-        <span>也可以继续向下，翻开最近的记录。</span>
-      </aside>
-
       <section
         ref={journal}
         id="latest"

@@ -5,6 +5,7 @@ export function createMotionRuntime() {
   return {
     scrollProgress: 0,
     charge: 0,
+    encounterProgress: 0,
     waveRadius: -1,
     awake: 0,
     pointerX: 0,

@@ -3,6 +3,15 @@
   "method": "built-in image_gen editing",
   "assets": [
     {
+      "name": "../monolith-encounter.png",
+      "width": 1672,
+      "height": 941,
+      "method": "built-in image_gen",
+      "references": ["../observatory-world.png", "../../../design/references/interaction-01-04.png"],
+      "purpose": "Dedicated ground-level shot for approach and charging, aligned with live engraving and touch overlays",
+      "prompt": "Paint a full-bleed 16:9 landscape close-up shot for the attached interactive site. Input 1 is the source panorama for exact palette, thin deliberate ink lines, worn turquoise stone, peach ringed planet, ivory observatory and red-scarf traveler. Input 2 is a storyboard; use only its top-right panel 02 for camera composition. Low viewpoint on the mint grassy island. Large turquoise monolith stands center-right, its top near 12% of frame and grassy foot at 87%, its narrow right side visible, diagonal orbital circle engraved around 37% of frame height and a thin engraved line with three small round nodes down the front. A small traveler stands at its foot in cream coat, short dark hair and flowing red scarf, one hand raised to the lower rune. Brass telescope and observation hut behind on left, pastel ringed salmon planet in lavender sky behind, lavender rocks and grass blades. Keep main stone and traveler within middle 56% of image for center crop on phones. Enough lavender sky at very top for site navigation. This is the unpowered background. No text, UI, progress rings, lights, watermarks, borders or collage. Repaint as a new shot in the same environment, with the shot change from the storyboard."
+    },
+    {
       "name": "sky-clean.png",
       "width": 1672,
       "height": 941,
