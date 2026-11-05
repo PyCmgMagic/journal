@@ -11,6 +11,7 @@ import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import {
   BufferGeometry,
   Float32BufferAttribute,
+  Group,
   Mesh,
   NoColorSpace,
   PerspectiveCamera,
@@ -40,6 +41,13 @@ import {
 
 type Runtime = ReturnType<typeof createMotionRuntime>;
 type PlanetFraming = { x: number; y: number; z: number };
+const terrainLayers = LAYERS.filter(
+  (layer) =>
+    layer.id === "island" ||
+    layer.id === "back-cliff" ||
+    (layer.z >= 0.55 && layer.z <= 0.78),
+);
+const distantLayers = LAYERS.filter((layer) => !terrainLayers.includes(layer));
 interface Props {
   runtime: Runtime;
   reducedMotion: boolean;
@@ -358,6 +366,7 @@ function Scene({ runtime, reducedMotion, reading, readCount, onReady }: Props) {
   for (const t of [original, sky, island, planet]) t.colorSpace = NoColorSpace;
   const background = useMemo(() => fullLayer("sky", -26), []);
   const planetFraming = useRef<PlanetFraming>({ x: 0, y: 0, z: LAYERS[0].z });
+  const terrain = useRef<Group>(null);
   const { camera, size, invalidate, gl } = useThree();
   const point = useMemo(() => new Vector3(), []);
   const smooth = useRef({ x: 0, y: 0, z: 12 });
@@ -421,6 +430,8 @@ function Scene({ runtime, reducedMotion, reading, readCount, onReady }: Props) {
     planetFraming.current.x = 0;
     planetFraming.current.y = 0;
     planetFraming.current.z = planetDepth;
+    terrain.current?.position.set(0, 0, 0);
+    terrain.current?.scale.setScalar(1);
     if (approachToSigil > 0 && viewport.height > 0) {
       // At the cut both illustrations project the engraved circle to the same screen position.
       const mobile = viewport.width <= 760;
@@ -469,6 +480,30 @@ function Scene({ runtime, reducedMotion, reading, readCount, onReady }: Props) {
       planetFraming.current.z =
         planetDepth +
         approachToSigil * (matchZ - distanceToPlanet - planetDepth);
+
+      // Reframe the station and the ground beneath it as a unit, using the tip of the scope.
+      const scopeDepth = 0.57;
+      const scopeUnitsPerPixel =
+        (H * (matchZ - scopeDepth)) / (1200 * matchHeight);
+      const scopeArtScale = (12 - scopeDepth) / 1200;
+      const terrainScale =
+        (closePixelScale * 1.34 * scopeUnitsPerPixel) / scopeArtScale;
+      const scopeX = anchorX + (334 - nearSigil.x) * closePixelScale;
+      const scopeY = anchorY + (542 - nearSigil.y) * closePixelScale;
+      terrain.current?.scale.setScalar(
+        1 + (terrainScale - 1) * approachToSigil,
+      );
+      terrain.current?.position.set(
+        approachToSigil *
+          (matchX +
+            scopeX * scopeUnitsPerPixel -
+            (1056 - W / 2) * scopeArtScale * terrainScale),
+        approachToSigil *
+          (matchY -
+            scopeY * scopeUnitsPerPixel -
+            (H / 2 - 261) * scopeArtScale * terrainScale),
+        approachToSigil * (1 - terrainScale) * scopeDepth,
+      );
       camera.position.x += (matchX - camera.position.x) * approachToSigil;
       camera.position.y += (matchY - camera.position.y) * approachToSigil;
       camera.position.z += (matchZ - camera.position.z) * approachToSigil;
@@ -482,14 +517,16 @@ function Scene({ runtime, reducedMotion, reading, readCount, onReady }: Props) {
       camera.updateProjectionMatrix();
     }
     camera.updateMatrixWorld();
+    terrain.current?.updateMatrixWorld();
     runtime.currentPosition.copy(camera.position);
     runtime.currentTarget.set(aimX, aimY, 0);
     if (host.current) {
       for (const [id, [px, py, depth]] of Object.entries(HOTSPOTS)) {
         const f = (12 - depth) / 12;
-        point
-          .set(((px - W / 2) / 100) * f, ((H / 2 - py) / 100) * f, depth)
-          .project(camera);
+        point.set(((px - W / 2) / 100) * f, ((H / 2 - py) / 100) * f, depth);
+        if (id !== "stone" && terrain.current)
+          point.applyMatrix4(terrain.current.matrixWorld);
+        point.project(camera);
         const el = host.current.querySelector<HTMLElement>(
           `[data-hotspot="${id}"]`,
         );
@@ -528,30 +565,32 @@ function Scene({ runtime, reducedMotion, reading, readCount, onReady }: Props) {
     if (Math.abs(x - smooth.current.x) + Math.abs(z - smooth.current.z) > 0.001)
       invalidate();
   }, -1);
+  const renderLayer = (l: ArtLayer) => (
+    <Layer
+      key={l.id}
+      layer={l}
+      texture={
+        l.source === "island"
+          ? island
+          : l.source === "planet"
+            ? planet
+            : original
+      }
+      runtime={runtime}
+      planetFraming={l.id === "planet-and-rings" ? planetFraming : undefined}
+    />
+  );
   return (
     <>
       <Layer layer={background} texture={sky} runtime={runtime} />
-      {LAYERS.map((l) => (
-        <Layer
-          key={l.id}
-          layer={l}
-          texture={
-            l.source === "island"
-              ? island
-              : l.source === "planet"
-                ? planet
-                : original
-          }
-          runtime={runtime}
-          planetFraming={
-            l.id === "planet-and-rings" ? planetFraming : undefined
-          }
-        />
-      ))}
-      {(["notes", "practice", "reading"] as const).map((id, index) => (
-        <LampPool key={id} id={id} index={index} runtime={runtime} />
-      ))}
-      <WakeTrail runtime={runtime} />
+      {distantLayers.map(renderLayer)}
+      <group ref={terrain}>
+        {terrainLayers.map(renderLayer)}
+        {(["notes", "practice", "reading"] as const).map((id, index) => (
+          <LampPool key={id} id={id} index={index} runtime={runtime} />
+        ))}
+        <WakeTrail runtime={runtime} />
+      </group>
       <Atmosphere runtime={runtime} readCount={readCount} />
     </>
   );
