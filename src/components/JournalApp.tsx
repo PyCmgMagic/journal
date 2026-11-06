@@ -11,13 +11,6 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import { createMotionRuntime } from "./world/motion-runtime";
 import IllustratedWorld from "./world/IllustratedWorld";
-import MonolithEncounter from "./world/MonolithEncounter";
-import {
-  encounterScale,
-  matchEnd,
-  matchStart,
-  smoothRange,
-} from "./world/encounter-framing";
 import SceneJourney from "./SceneJourney";
 import { useWorldStore } from "../state/world-store";
 import {
@@ -44,7 +37,6 @@ function Arrow({ back = false }: { back?: boolean }) {
 
 export default function JournalApp({ posts }: Props) {
   const root = useRef<HTMLDivElement>(null);
-  const viewportRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const readingRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
@@ -74,7 +66,6 @@ export default function JournalApp({ posts }: Props) {
   });
   const [mounted, setMounted] = useState(false);
   const [ready, setReady] = useState(false);
-  const [encounterReady, setEncounterReady] = useState(false);
   const [staticScene, setStaticScene] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [storageLoaded, setStorageLoaded] = useState(false);
@@ -141,99 +132,12 @@ export default function JournalApp({ posts }: Props) {
   const syncRitual = useCallback(() => {
     const style = root.current?.style;
     style?.setProperty("--charge", String(runtime.charge));
-    style?.setProperty("--stone-flare", String(runtime.stoneLight));
     runtime.invalidate();
   }, [runtime]);
-
-  const showEncounter =
-    encounterReady &&
-    !panel &&
-    !staticScene &&
-    !reducedMotion &&
-    (phase === "idle" || phase === "charging");
-  const awakening = phase === "awakening";
-  const syncEncounter = useCallback(() => {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-    const previous = runtime.encounterProgress;
-    const progress =
-      (runtime.heldEncounter ?? runtime.scrollEncounter) *
-      runtime.encounterWeight;
-    if (progress !== previous) {
-      runtime.encounterProgress = progress;
-      viewport.style.setProperty(
-        "--encounter-camera",
-        String(smoothRange(0, matchStart, progress)),
-      );
-      viewport.style.setProperty(
-        "--encounter-blend",
-        String(smoothRange(matchStart, matchEnd, progress)),
-      );
-      viewport.style.setProperty(
-        "--encounter-scale",
-        String(encounterScale(progress)),
-      );
-      viewport.style.setProperty(
-        "--encounter-nav",
-        String(smoothRange(0.26, 0.91, progress)),
-      );
-      viewport.style.setProperty(
-        "--encounter-controls",
-        String(smoothRange(0.91, 0.99, progress)),
-      );
-      viewport.dataset.encounter =
-        progress >= 0.94 ? "near" : progress > 0.12 ? "moving" : "wide";
-      if (previous <= 0.12 && progress > 0.12) {
-        setHover(null);
-        runtime.hoverIndex = -1;
-      }
-    }
-    runtime.invalidate();
-  }, [runtime]);
-
-  useEffect(() => {
-    runtime.syncEncounter = syncEncounter;
-    syncEncounter();
-    return () => {
-      runtime.syncEncounter = () => {};
-    };
-  }, [runtime, syncEncounter]);
-
-  // Only view changes and the ritual can temporarily lower the scroll-driven shot.
-  // Wheel and touch scrolling never start a separate camera tween.
-  useEffect(() => {
-    const target = showEncounter ? 1 : 0;
-    const distance = Math.abs(target - runtime.encounterWeight);
-    if (distance < 0.0001) return;
-    if (reducedMotion || runtime.scrollEncounter === 0) {
-      runtime.encounterWeight = target;
-      syncEncounter();
-      return;
-    }
-    const tween = gsap.to(runtime, {
-      encounterWeight: target,
-      duration: Math.max(0.18, 0.78 * distance),
-      delay: awakening && !panelOpen && !reducedMotion ? 0.22 : 0,
-      ease: "sine.inOut",
-      onUpdate: syncEncounter,
-    });
-    return () => {
-      tween.kill();
-    };
-  }, [
-    showEncounter,
-    awakening,
-    panelOpen,
-    reducedMotion,
-    runtime,
-    syncEncounter,
-  ]);
 
   const cancelCharge = useCallback(() => {
     if (useWorldStore.getState().phase !== "charging") return;
     heldPointer.current = null;
-    runtime.heldEncounter = null;
-    syncEncounter();
     chargeTween.current?.kill();
     chargeTween.current = gsap.to(runtime, {
       charge: 0,
@@ -241,7 +145,7 @@ export default function JournalApp({ posts }: Props) {
       onUpdate: syncRitual,
     });
     dispatch({ type: "charge.cancel" });
-  }, [runtime, reducedMotion, dispatch, syncRitual, syncEncounter]);
+  }, [runtime, reducedMotion, dispatch, syncRitual]);
 
   const { contextSafe } = useGSAP(
     () => {
@@ -270,7 +174,6 @@ export default function JournalApp({ posts }: Props) {
       dispatch({ type: "charge.begin" });
     if (useWorldStore.getState().phase !== "charging") return;
     heldPointer.current = null;
-    runtime.heldEncounter = null;
     runtime.charge = 1;
     syncRitual();
     dispatch({ type: "charge.complete" });
@@ -283,16 +186,13 @@ export default function JournalApp({ posts }: Props) {
         onComplete: () => dispatch({ type: "awakening.complete" }),
       })
       .to(runtime, { stoneLight: 1, duration: t(0.3) }, 0)
-      .to(
-        runtime,
-        { waveRadius: 0.68, duration: t(1.9), ease: "none" },
-        t(0.78),
-      )
-      .to(runtime, { lamp0: 1, duration: t(0.34) }, t(1.51))
-      .to(runtime, { lamp1: 1, duration: t(0.34) }, t(1.95))
-      .to(runtime, { lamp2: 1, duration: t(0.34) }, t(2.53))
-      .to(runtime, { response: 1, awake: 1, duration: t(0.65) }, t(2.53))
-      .to(runtime, { stars: 1, duration: t(0.65) }, t(2.85))
+      .to(runtime, { returnToWorld: 1, duration: 0 }, t(1.0))
+      .to(runtime, { waveRadius: 0.68, duration: t(2.4), ease: "none" }, t(1.8))
+      .to(runtime, { lamp0: 1, duration: t(0.34) }, t(2.7))
+      .to(runtime, { lamp1: 1, duration: t(0.34) }, t(3.2))
+      .to(runtime, { lamp2: 1, duration: t(0.34) }, t(3.8))
+      .to(runtime, { awake: 1, duration: t(0.65) }, t(3.8))
+      .to(runtime, { stars: 1, duration: t(0.65) }, t(4.2))
       .to(runtime, { charge: 0, duration: t(0.45) }, t(1.0));
   });
 
@@ -310,7 +210,6 @@ export default function JournalApp({ posts }: Props) {
     dispatch({ type: "charge.begin" });
     if (useWorldStore.getState().phase !== "charging") return;
     heldPointer.current = event.pointerId;
-    runtime.heldEncounter = runtime.scrollEncounter;
     chargeTween.current?.kill();
     chargeTween.current = gsap.to(runtime, {
       charge: 1,
@@ -452,25 +351,24 @@ export default function JournalApp({ posts }: Props) {
         });
       }
       const bias =
-        selection === "notes" ? -0.12 : selection === "reading" ? 0.12 : 0;
+        selection === "notes" ? -10 : selection === "reading" ? 10 : 0;
       cameraTween.current?.kill();
       cameraTween.current = gsap.to(runtime, {
-        focusX: opening ? (isReading ? -1.5 : 3.4 + bias) : 0,
-        focusZoom: opening ? (isReading ? -1.2 : 0.2) : 0,
+        focusX:
+          opening && !isReading && innerWidth > 760
+            ? -innerWidth * 0.2 + bias
+            : 0,
+        focusZoom: 0,
+        readingBlend: isReading ? 1 : 0,
         duration: reducedMotion ? 0 : 0.65,
         ease: "power3.inOut",
         onUpdate: () => runtime.invalidate(),
       });
       worldTween.current?.kill();
       worldTween.current = gsap.to(
-        root.current?.querySelectorAll(".world-canvas, .monolith-encounter") ??
-          [],
+        root.current?.querySelector(".world-canvas") ?? [],
         {
-          y: isReading
-            ? -(innerWidth <= 760
-                ? innerHeight * 0.43
-                : Math.max(100, innerWidth * 0.075 + innerHeight * 0.12))
-            : 0,
+          y: 0,
           duration: reducedMotion ? 0 : 0.65,
           ease: "power3.inOut",
           onUpdate: () => runtime.invalidate(),
@@ -874,10 +772,10 @@ export default function JournalApp({ posts }: Props) {
         <section className="world-scroll" aria-label="异星观测站">
           <div
             className="world-viewport"
-            ref={viewportRef}
-            data-encounter="wide"
             onPointerMove={(event) => {
-              if (panel) return;
+              if (panel || event.pointerType !== "mouse") return;
+              if ((event.target as HTMLElement).closest(".hover-preview"))
+                return;
               const r = event.currentTarget.getBoundingClientRect();
               runtime.pointerX = Math.max(
                 -1,
@@ -887,16 +785,18 @@ export default function JournalApp({ posts }: Props) {
                 -1,
                 Math.min(1, 1 - ((event.clientY - r.top) / r.height) * 2),
               );
+              runtime.invalidate();
             }}
             onPointerLeave={() => {
               if (!panel) {
                 runtime.pointerX = 0;
                 runtime.pointerY = 0;
+                runtime.invalidate();
               }
             }}
           >
             <div className="sky-grain" aria-hidden="true" />
-            <div className="world-canvas" aria-label="可探索的分层异星观测站">
+            <div className="world-canvas" aria-label="可探索的异星观测站">
               {mounted && (
                 <IllustratedWorld
                   runtime={runtime}
@@ -917,17 +817,6 @@ export default function JournalApp({ posts }: Props) {
                 />
               )}
             </div>
-            {ready && !staticScene && !reducedMotion && (
-              <MonolithEncounter
-                phase={phase}
-                panelOpen={!!panel}
-                ready={encounterReady}
-                onReady={() => setEncounterReady(true)}
-                onHoldStart={startHold}
-                onHoldEnd={endHold}
-                onActivate={activate}
-              />
-            )}
             <div className="hero-copy">
               <p className="eyebrow">个人博客 / 学习记录</p>
               <h1>
@@ -1005,7 +894,7 @@ export default function JournalApp({ posts }: Props) {
               runtime={runtime}
               posts={posts}
               reducedMotion={reducedMotion}
-              panelOpen={!!panel}
+              panelOpen={panelOpen}
               onArticle={(post) => void openArticle(post)}
               onAll={() => openList("all")}
             />
@@ -1017,6 +906,7 @@ export default function JournalApp({ posts }: Props) {
             {previewPost && !panel && (
               <div
                 className="hover-preview"
+                data-preview-category={hover}
                 style={{ left: previewPoint.x, top: previewPoint.y }}
                 onPointerEnter={() => onHover(hover)}
                 onPointerLeave={() => onHover(null)}
@@ -1051,7 +941,7 @@ export default function JournalApp({ posts }: Props) {
           <section
             key={panel === "article" ? "reading" : "collection"}
             ref={panelRef}
-            className={`content-panel ${panel === "article" ? "article-panel" : ""}`}
+            className={`content-panel ${panel === "article" ? "article-panel" : "collection-panel"}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="panel-heading"

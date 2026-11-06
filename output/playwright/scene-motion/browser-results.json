@@ -1,0 +1,148 @@
+{
+  "browser": "156.0.4314.58",
+  "date": "2026-11-06T09:54:03.494Z",
+  "checks": [
+    {
+      "name": "complete illustration follows the pointer while page typography stays fixed",
+      "detail": {
+        "left": {
+          "x": -120.406494140625,
+          "y": -10.177734375,
+          "width": 1650.31298828125,
+          "height": 928.7999267578125
+        },
+        "right": {
+          "x": -90.156494140625,
+          "y": -10.177734375,
+          "width": 1650.31298828125,
+          "height": 928.7999267578125
+        }
+      }
+    },
+    {
+      "name": "small boundary reversal retains the shot without flicker",
+      "detail": true
+    },
+    {
+      "name": "scroll switches complete shots with no held overlapping intermediate",
+      "detail": {
+        "middleFrame": {
+          "x": -90.156494140625,
+          "y": -10.177734375,
+          "width": 1650.31298828125,
+          "height": 928.7999267578125
+        }
+      }
+    },
+    {
+      "name": "reversible scroll",
+      "detail": {
+        "near": "encounter",
+        "far": "overview"
+      }
+    },
+    {
+      "name": "continuous journey: longer range, scene retained at end, article and history return",
+      "detail": {
+        "travelDistance": 2520,
+        "earlyProgress": 0.179
+      }
+    },
+    {
+      "name": "Home keeps its destination and reopening cancels the previous exit",
+      "detail": true
+    },
+    {
+      "name": "early release cancels",
+      "detail": true
+    },
+    {
+      "name": "blur event cancels",
+      "detail": true
+    },
+    {
+      "name": "complete ritual and no reentry",
+      "detail": {
+        "charge": 0,
+        "stone": 1,
+        "wave": 0.68,
+        "lamps": [
+          1,
+          1,
+          1
+        ],
+        "stars": 1
+      }
+    },
+    {
+      "name": "lamp preview does not block category",
+      "detail": true
+    },
+    {
+      "name": "reference 07 full-width reading and selectable text",
+      "detail": {
+        "articleBounds": {
+          "x": 0,
+          "y": 270,
+          "width": 1440,
+          "height": 630
+        },
+        "bodyBounds": {
+          "x": 145,
+          "y": 349,
+          "width": 835,
+          "height": 961.21875
+        },
+        "tocBounds": {
+          "x": 1045,
+          "y": 393,
+          "width": 250,
+          "height": 135.078125
+        }
+      }
+    },
+    {
+      "name": "HTML article and table of contents",
+      "detail": true
+    },
+    {
+      "name": "history and scene scroll/category restoration",
+      "detail": {
+        "scrollY": 230
+      }
+    },
+    {
+      "name": "search, empty result, archive and about",
+      "detail": true
+    },
+    {
+      "name": "touch journey, in-scene reading and reverse return",
+      "detail": true
+    },
+    {
+      "name": "touch cancel and complete hold",
+      "detail": true
+    },
+    {
+      "name": "390/320 mobile reading, menu and viewport fit",
+      "detail": true
+    },
+    {
+      "name": "reduced motion and keyboard equivalent",
+      "detail": true
+    },
+    {
+      "name": "WebGL unavailable: complete illustration experience and reading remain available",
+      "detail": true
+    },
+    {
+      "name": "independent HTML address without JavaScript",
+      "detail": true
+    },
+    {
+      "name": "no unhandled script or shader compilation errors",
+      "detail": true
+    }
+  ],
+  "errors": []
+}

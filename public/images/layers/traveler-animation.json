@@ -1,0 +1,312 @@
+{
+  "columns": 4,
+  "rows": 3,
+  "cell": [
+    384,
+    448
+  ],
+  "hip": 224,
+  "baseline": 420,
+  "registration": [
+    {
+      "frame": 0,
+      "source": "public/images/layers/traveler-walk-v2.png",
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "width": 444,
+        "height": 444
+      },
+      "bounds": [
+        75,
+        28,
+        365,
+        411
+      ],
+      "anchor": 240,
+      "offset": [
+        66,
+        52
+      ],
+      "size": [
+        279,
+        368
+      ]
+    },
+    {
+      "frame": 1,
+      "source": "public/images/layers/traveler-walk-v2.png",
+      "crop": {
+        "left": 444,
+        "top": 0,
+        "width": 443,
+        "height": 444
+      },
+      "bounds": [
+        73,
+        28,
+        323,
+        410
+      ],
+      "anchor": 246,
+      "offset": [
+        58,
+        52
+      ],
+      "size": [
+        241,
+        368
+      ]
+    },
+    {
+      "frame": 2,
+      "source": "public/images/layers/traveler-walk-v2.png",
+      "crop": {
+        "left": 887,
+        "top": 0,
+        "width": 444,
+        "height": 444
+      },
+      "bounds": [
+        80,
+        27,
+        308,
+        409
+      ],
+      "anchor": 247,
+      "offset": [
+        64,
+        52
+      ],
+      "size": [
+        220,
+        368
+      ]
+    },
+    {
+      "frame": 3,
+      "source": "public/images/layers/traveler-walk-v2.png",
+      "crop": {
+        "left": 1331,
+        "top": 0,
+        "width": 443,
+        "height": 444
+      },
+      "bounds": [
+        78,
+        27,
+        374,
+        408
+      ],
+      "anchor": 245,
+      "offset": [
+        63,
+        52
+      ],
+      "size": [
+        286,
+        368
+      ]
+    },
+    {
+      "frame": 4,
+      "source": "public/images/layers/traveler-walk-v2.png",
+      "crop": {
+        "left": 0,
+        "top": 444,
+        "width": 444,
+        "height": 443
+      },
+      "bounds": [
+        82,
+        27,
+        366,
+        408
+      ],
+      "anchor": 244,
+      "offset": [
+        68,
+        52
+      ],
+      "size": [
+        275,
+        368
+      ]
+    },
+    {
+      "frame": 5,
+      "source": "public/images/layers/traveler-walk-v2.png",
+      "crop": {
+        "left": 444,
+        "top": 444,
+        "width": 443,
+        "height": 443
+      },
+      "bounds": [
+        74,
+        27,
+        329,
+        409
+      ],
+      "anchor": 245,
+      "offset": [
+        60,
+        52
+      ],
+      "size": [
+        246,
+        368
+      ]
+    },
+    {
+      "frame": 6,
+      "source": "public/images/layers/traveler-walk-v2.png",
+      "crop": {
+        "left": 887,
+        "top": 444,
+        "width": 444,
+        "height": 443
+      },
+      "bounds": [
+        75,
+        28,
+        313,
+        410
+      ],
+      "anchor": 247,
+      "offset": [
+        59,
+        52
+      ],
+      "size": [
+        230,
+        368
+      ]
+    },
+    {
+      "frame": 7,
+      "source": "public/images/layers/traveler-walk-v2.png",
+      "crop": {
+        "left": 1331,
+        "top": 444,
+        "width": 443,
+        "height": 443
+      },
+      "bounds": [
+        75,
+        27,
+        370,
+        413
+      ],
+      "anchor": 242,
+      "offset": [
+        65,
+        52
+      ],
+      "size": [
+        281,
+        368
+      ]
+    },
+    {
+      "frame": 8,
+      "source": "public/images/layers/traveler-poses-v2.png",
+      "crop": {
+        "left": 0,
+        "top": 724,
+        "width": 362,
+        "height": 362
+      },
+      "bounds": [
+        49,
+        20,
+        255,
+        333
+      ],
+      "anchor": 205,
+      "offset": [
+        41,
+        52
+      ],
+      "size": [
+        243,
+        368
+      ]
+    },
+    {
+      "frame": 9,
+      "source": "public/images/layers/traveler-poses-v2.png",
+      "crop": {
+        "left": 362,
+        "top": 724,
+        "width": 362,
+        "height": 362
+      },
+      "bounds": [
+        50,
+        20,
+        276,
+        333
+      ],
+      "anchor": 197,
+      "offset": [
+        52,
+        52
+      ],
+      "size": [
+        266,
+        368
+      ]
+    },
+    {
+      "frame": 10,
+      "source": "public/images/layers/traveler-poses-v2.png",
+      "crop": {
+        "left": 724,
+        "top": 724,
+        "width": 362,
+        "height": 362
+      },
+      "bounds": [
+        49,
+        20,
+        289,
+        333
+      ],
+      "anchor": 198,
+      "offset": [
+        49,
+        52
+      ],
+      "size": [
+        282,
+        368
+      ]
+    },
+    {
+      "frame": 11,
+      "source": "public/images/layers/traveler-poses-v2.png",
+      "crop": {
+        "left": 1086,
+        "top": 724,
+        "width": 362,
+        "height": 362
+      },
+      "bounds": [
+        49,
+        21,
+        294,
+        333
+      ],
+      "anchor": 197,
+      "offset": [
+        50,
+        52
+      ],
+      "size": [
+        289,
+        368
+      ]
+    }
+  ]
+}

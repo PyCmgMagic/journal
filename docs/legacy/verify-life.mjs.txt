@@ -1,0 +1,145 @@
+import { createRequire } from "node:module";
+import { mkdir, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import assert from "node:assert/strict";
+const require = createRequire(import.meta.url);
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
+const output = resolve("output/playwright/poses");
+await mkdir(output, { recursive: true });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.BROWSER_EXECUTABLE,
+  args: ["--enable-unsafe-swiftshader"],
+});
+const context = await browser.newContext({
+  viewport: { width: 1440, height: 900 },
+  recordVideo: {
+    dir: resolve(output, "video"),
+    size: { width: 1440, height: 900 },
+  },
+});
+const page = await context.newPage(),
+  errors = [],
+  checks = [];
+page.on("pageerror", (e) => errors.push(String(e)));
+page.on("console", (m) => {
+  if (m.type() === "error") errors.push(m.text());
+});
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const model = async () =>
+  JSON.parse(await page.locator("canvas").getAttribute("data-traveler"));
+const shot = (name) =>
+  page.screenshot({ path: resolve(output, `${name}.png`) });
+const check = (name, data) => {
+  checks.push({ name, data });
+  console.log("PASS " + name);
+};
+try {
+  await page.goto("http://127.0.0.1:4321/");
+  await page.locator('[data-scene-mode="webgl"]').waitFor();
+  await wait(700);
+  const idle = await model();
+  await wait(700);
+  const breathing = await model();
+  assert.notEqual(breathing.time, idle.time);
+  assert.deepEqual(breathing.position, idle.position);
+  assert.equal(breathing.frame, 8);
+  await shot("00-initial");
+  check(
+    "idle cloth time advances while complete standing pose stays planted",
+    breathing,
+  );
+  const distance = await page.evaluate(
+    () => document.documentElement.scrollHeight - innerHeight,
+  );
+  await page.mouse.wheel(0, Math.round(distance * 0.31));
+  const poses = [];
+  for (let i = 0; i < 12; i++) {
+    await wait(180);
+    poses.push(await model());
+    if (i === 5) await shot("01-walking");
+  }
+  assert.ok(poses.some((p) => p.gait > 0.5));
+  assert.ok(
+    new Set(poses.filter((p) => p.mode === "walking").map((p) => p.frame))
+      .size >= 4,
+  );
+  assert.ok(poses.at(-1).distance > poses[0].distance + 1);
+  check("approach advances through distinct complete walk poses", poses);
+  await wait(1500);
+  const settled = await model();
+  await wait(600);
+  const still = await model();
+  assert.ok(Math.abs(still.distance - settled.distance) < 0.02);
+  assert.ok(still.gait < 0.03);
+  assert.equal(still.frame, 8);
+  check("one short approach settles to a complete standing pose", still);
+  await page.mouse.wheel(0, -Math.round(distance * 0.18));
+  await wait(900);
+  const reversed = await model();
+  assert.equal(reversed.distance, settled.distance);
+  assert.deepEqual(reversed.position, settled.position);
+  check(
+    "reverse scrolling moves the camera without dragging the traveler backwards",
+    reversed,
+  );
+  await page.mouse.wheel(0, Math.round(distance * 0.39));
+  await wait(4800);
+  await shot("02-standing");
+  await page.locator(".monolith-control").hover();
+  await page.mouse.down();
+  await wait(760);
+  const reaching = await model();
+  await page.mouse.up();
+  assert.ok(reaching.reach > 0.3);
+  await page.locator('[data-phase="idle"]').waitFor();
+  await wait(850);
+  assert.ok((await model()).reach < 0.08);
+  assert.ok(reaching.frame > 8);
+  check(
+    "hold advances whole reach poses, cancellation restores the stance",
+    reaching,
+  );
+  await page.mouse.down();
+  await wait(650);
+  await shot("03-reaching");
+  await page.locator('[data-phase="awakening"]').waitFor();
+  await page.mouse.up();
+  await page.locator('[data-phase="awake"]').waitFor();
+  await wait(600);
+  await shot("04-awake");
+  await page.locator('.world-label[data-category="notes"]').hover();
+  await wait(1000);
+  await shot("05-curiosity");
+  await page.locator('.world-label[data-category="notes"]').click();
+  await page.locator(".article-row").first().click();
+  await page.locator(".prose h1").waitFor();
+  await wait(1800);
+  const reading = await model();
+  await wait(800);
+  assert.equal((await model()).distance, reading.distance);
+  check("reading pauses the journey", reading);
+  await shot("06-reading");
+  await page.getByRole("button", { name: "返回观测站" }).click();
+  await page.locator(".content-panel").waitFor({ state: "detached" });
+  await wait(900);
+  await shot("07-return");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await wait(700);
+  const reduced = await model();
+  await wait(700);
+  assert.deepEqual(await model(), reduced);
+  assert.equal(reduced.gait, 0);
+  assert.equal(reduced.frame, 8);
+  check("reduced motion freezes the complete standing pose", reduced);
+  assert.deepEqual(errors, []);
+  await writeFile(
+    resolve(output, "results.json"),
+    JSON.stringify({ checks, errors }, null, 2),
+  );
+} finally {
+  const video = page.video();
+  await context.close();
+  await video.saveAs(resolve(output, "traveler-poses-actual.webm"));
+  await browser.close();
+}

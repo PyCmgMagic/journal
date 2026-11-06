@@ -7,7 +7,7 @@ import { resolve } from "node:path";
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const base = process.env.PREVIEW_URL || "http://127.0.0.1:4321";
-const output = resolve("output/playwright");
+const output = resolve("output/playwright/scene-motion");
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   headless: true,
@@ -33,10 +33,12 @@ const phase = (page, value) =>
   page.locator(`.journal-app[data-phase="${value}"]`).waitFor();
 const ready = async (page) => {
   await page.goto(base);
-  await page.locator('[data-scene-mode="webgl"]').waitFor();
+  await page.locator('[data-scene-mode="frames"]').waitFor();
   await page.locator(".scene-ready").waitFor();
   await page.waitForFunction(() =>
-    document.querySelector('[data-hotspot="stone"]')?.style.left.endsWith("px"),
+    [...document.querySelectorAll(".scene-frame-image")].every(
+      (img) => img.complete && img.naturalWidth > 0,
+    ),
   );
 };
 const observe = (page) => {
@@ -46,8 +48,8 @@ const observe = (page) => {
     if (m.type() === "error") results.errors.push(m.text());
   });
 };
-const camera = async (page) =>
-  JSON.parse(await page.locator("canvas").getAttribute("data-camera"));
+const shot = async (page) =>
+  page.locator(".frames-stage").getAttribute("data-shot");
 
 try {
   const context = await browser.newContext({
@@ -61,14 +63,20 @@ try {
   await screenshot(page, "01-initial.png");
   await page.mouse.move(110, 640);
   await delay(900);
-  const left = await camera(page);
+  const title = await page.locator(".hero-copy").boundingBox();
+  const left = await page.locator(".frame-parallax").boundingBox();
   await screenshot(page, "parallax-left.png");
   await page.mouse.move(1320, 640);
   await delay(900);
-  const right = await camera(page);
+  const right = await page.locator(".frame-parallax").boundingBox();
   await screenshot(page, "parallax-right.png");
-  assert.ok(right[0] - left[0] > 0.5);
-  mark("damped pointer camera", { left, right });
+  assert.ok(right.x - left.x > 20);
+  assert.deepEqual(await page.locator(".hero-copy").boundingBox(), title);
+  assert.equal(await page.locator("canvas").count(), 0);
+  mark(
+    "complete illustration follows the pointer while page typography stays fixed",
+    { left, right },
+  );
   const travelDistance = await page.evaluate(
     () => document.documentElement.scrollHeight - innerHeight,
   );
@@ -80,46 +88,54 @@ try {
   );
   assert.ok(earlyProgress > 0.1 && earlyProgress < 0.25);
   assert.equal(await page.locator(".latest-section").count(), 0);
-  const handoffScroll = Math.round(travelDistance * 0.42);
-  const readHandoff = () =>
-    page
-      .locator(".world-viewport")
-      .evaluate((element) =>
-        Number(element.style.getPropertyValue("--encounter-blend")),
-      );
-  await page.mouse.wheel(0, handoffScroll - 450);
+  assert.equal(await shot(page), "overview");
+  const middleScroll = Math.round(travelDistance * 0.31);
+  await page.mouse.wheel(0, middleScroll - 450);
   await delay(850);
-  const handoff = await readHandoff();
-  assert.ok(
-    handoff > 0.05 && handoff < 0.95,
-    "the wheel stops within the handoff",
+  assert.equal(await shot(page), "encounter");
+  await page.locator('[data-transitioning="false"]').waitFor();
+  assert.equal(
+    await page
+      .locator(".overview-frame")
+      .evaluate((e) => getComputedStyle(e).visibility),
+    "hidden",
   );
+  assert.equal(
+    await page
+      .locator(".encounter-frame")
+      .evaluate((e) => getComputedStyle(e).opacity),
+    "1",
+  );
+  const middleFrame = await page.locator(".encounter-frame").boundingBox();
+  await screenshot(page, "journey-stopped-mid-approach.png");
   await delay(600);
-  assert.equal(
-    await readHandoff(),
-    handoff,
-    "a stopped scroll must not advance to the close shot",
+  assert.deepEqual(
+    await page.locator(".encounter-frame").boundingBox(),
+    middleFrame,
   );
-  await page.mouse.wheel(0, 450 - handoffScroll);
-  await delay(850);
-  assert.equal(
-    await readHandoff(),
+  await page.mouse.wheel(0, -Math.round(travelDistance * 0.025));
+  await delay(500);
+  assert.equal(await shot(page), "encounter");
+  mark("small boundary reversal retains the shot without flicker");
+  await page.mouse.wheel(
     0,
-    "reverse scroll must reverse the handoff",
+    450 - middleScroll + Math.round(travelDistance * 0.025),
   );
-  mark("scroll-linked handoff stays at the wheel position and reverses", {
-    handoff,
+  await delay(850);
+  assert.equal(await shot(page), "overview");
+  mark("scroll switches complete shots with no held overlapping intermediate", {
+    middleFrame,
   });
   await page.mouse.wheel(0, Math.round(travelDistance * 0.52) - 450);
   await delay(1500);
-  const near = await camera(page);
-  assert.ok(near[2] < 11.3);
+  const near = await shot(page);
+  assert.equal(near, "encounter");
   await screenshot(page, "scroll-approach.png");
   await screenshot(page, "journey-03-station.png");
   await page.mouse.wheel(0, -travelDistance);
   await delay(1500);
-  const far = await camera(page);
-  assert.ok(Math.abs(far[2] - 12) < 0.02);
+  const far = await shot(page);
+  assert.equal(far, "overview");
   mark("reversible scroll", { near, far });
 
   await page.mouse.wheel(0, travelDistance + 1000);
@@ -181,6 +197,8 @@ try {
   await page.locator(".content-panel").waitFor({ state: "detached" });
   mark("Home keeps its destination and reopening cancels the previous exit");
 
+  await page.getByRole("button", { name: "02观测站", exact: true }).click();
+  await delay(1200);
   const stone = page.locator(".monolith-control");
   await stone.hover();
   await delay(500);
@@ -209,13 +227,16 @@ try {
   await delay(300);
   await screenshot(page, "03-awakened.png");
   const effects = JSON.parse(
-    await page.locator("canvas").getAttribute("data-effects"),
+    await page.locator(".frames-stage").getAttribute("data-effects"),
   );
   assert.deepEqual(effects.lamps, [1, 1, 1]);
   assert.equal(effects.stars, 1);
   assert.equal(await stone.isDisabled(), true);
   await phase(page, "awake");
   mark("complete ritual and no reentry", effects);
+  assert.equal(await shot(page), "overview");
+  await page.getByRole("button", { name: "01远望", exact: true }).click();
+  await delay(1200);
 
   const lamp = page.locator('.world-label[data-category="notes"]');
   await lamp.hover();
@@ -403,6 +424,8 @@ try {
     await quiet.locator('[data-hotspot="stone"]').boundingBox(),
     initialStone,
   );
+  await quiet.getByRole("button", { name: "02观测站", exact: true }).click();
+  await delay(100);
   await quiet.locator(".monolith-control").focus();
   await quiet.keyboard.press("Enter");
   await phase(quiet, "awake");
@@ -425,15 +448,17 @@ try {
   });
   const flat = await fallback.newPage();
   flat.setDefaultTimeout(8000);
-  // Three reports the intentionally unavailable context to console; it must be handled, never a pageerror.
+  // Finished illustration scenes work even on devices without WebGL.
   flat.on("pageerror", (e) => results.errors.push(String(e)));
   await flat.goto(base);
-  await flat.locator('[data-scene-mode="fallback"]').waitFor();
-  assert.match(await flat.locator(".world-caption").innerText(), /静态插画/);
+  await flat.locator('[data-scene-mode="frames"]').waitFor();
+  assert.equal(await flat.locator("canvas").count(), 0);
   await flat.getByRole("link", { name: "阅读日志", exact: true }).click();
   await flat.locator(".article-row").first().click();
   await flat.locator(".prose h1").waitFor();
-  mark("WebGL unavailable: truthful fallback and reading");
+  mark(
+    "WebGL unavailable: complete illustration experience and reading remain available",
+  );
   await fallback.close();
 
   const plain = await browser.newContext({

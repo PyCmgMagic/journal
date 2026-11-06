@@ -7,7 +7,7 @@ import {
   ShaderMaterial,
   Vector3,
 } from "three";
-import { ART_HEIGHT, ART_WIDTH } from "./layer-data";
+import { artworkPoint } from "./artwork-space";
 import type { createMotionRuntime } from "./motion-runtime";
 
 const route = [
@@ -25,6 +25,8 @@ const route = [
   [1074, 601],
   [1155, 608],
   [1287, 626],
+  [1400, 642],
+  [1480, 650],
 ];
 
 const vertexShader = `
@@ -48,7 +50,11 @@ const fragmentShader = `
     float glow = exp(-distanceFromCenter * 4.5) * (1.0 - smoothstep(0.65, 1.0, distanceFromCenter));
     float trailingLight = mix(0.62, 0.52, uLit);
     float opacity = (core * 0.9 + glow * 0.55) * (revealed * trailingLight + front * 0.85);
-    gl_FragColor = vec4(mix(vec3(1.0, 0.68, 0.31), vec3(1.0, 0.98, 0.76), core), opacity);
+    float path = 1.0-smoothstep(.55,.63,distanceFromCenter);
+    vec3 paper = mix(vec3(.48,.38,.44),vec3(.96,.79,.66),1.0-smoothstep(.48,.60,distanceFromCenter));
+    paper+=(fract(sin(dot(vRoute*vec2(700.,90.),vec2(12.9898,78.233)))*43758.5453)-.5)*.035;
+    vec3 light=mix(vec3(1.0,.68,.31),vec3(1.0,.98,.76),core);
+    gl_FragColor = vec4(mix(paper,light,opacity*step(.001,uTravel)),max(path,opacity*step(.001,uTravel)));
   }
 `;
 
@@ -64,13 +70,8 @@ export default function WakeTrail({
     [],
   );
   const geometry = useMemo(() => {
-    const z = 0.07;
-    const f = (12 - z) / 1200;
     const curve = new CatmullRomCurve3(
-      route.map(
-        ([x, y]) =>
-          new Vector3((x - ART_WIDTH / 2) * f, (ART_HEIGHT / 2 - y) * f, z),
-      ),
+      route.map(([x, y]) => new Vector3(x, y, 0)),
     );
     const vertices: number[] = [];
     const indices: number[] = [];
@@ -80,17 +81,12 @@ export default function WakeTrail({
       const progress = i / segments;
       const center = curve.getPoint(progress);
       const direction = curve.getTangent(progress);
-      const width = 0.12 + progress * 0.08;
+      const width = 8 + progress * 7;
       const dx = -direction.y * width;
       const dy = direction.x * width;
-      vertices.push(
-        center.x - dx,
-        center.y - dy,
-        z,
-        center.x + dx,
-        center.y + dy,
-        z,
-      );
+      const left = artworkPoint(center.x - dx, center.y - dy, 0.028);
+      const right = artworkPoint(center.x + dx, center.y + dy, 0.028);
+      vertices.push(left.x, left.y, left.z, right.x, right.y, right.z);
       uv.push(progress, 0, progress, 1);
       if (i < segments) {
         const a = i * 2;
@@ -109,10 +105,10 @@ export default function WakeTrail({
     const { uniforms } = material.current;
     uniforms.uTravel.value = runtime.waveRadius / 0.68;
     uniforms.uLit.value = runtime.awake;
-    material.current.visible = runtime.waveRadius > 0;
+    material.current.visible = true;
   });
   return (
-    <mesh geometry={geometry}>
+    <mesh geometry={geometry} renderOrder={2}>
       <shaderMaterial
         ref={material}
         uniforms={uniforms}
@@ -120,6 +116,9 @@ export default function WakeTrail({
         fragmentShader={fragmentShader}
         transparent
         depthWrite={false}
+        polygonOffset
+        polygonOffsetFactor={-4}
+        polygonOffsetUnits={-4}
         side={2}
       />
     </mesh>

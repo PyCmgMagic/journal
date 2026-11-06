@@ -1,0 +1,316 @@
+{
+  "checks": [
+    {
+      "name": "idle cloth time advances while complete standing pose stays planted",
+      "data": {
+        "mode": "standing",
+        "distance": 0,
+        "gait": 0,
+        "reach": 0,
+        "frame": 8,
+        "nextFrame": 8,
+        "blend": 0,
+        "wind": 0.9727640972944073,
+        "time": 1.4416999999880784,
+        "position": [
+          4.937768762677484,
+          0.22072210953346844,
+          -2.312373225152129
+        ]
+      }
+    },
+    {
+      "name": "approach advances through distinct complete walk poses",
+      "data": [
+        {
+          "mode": "standing",
+          "distance": 0,
+          "gait": 0,
+          "reach": 0,
+          "frame": 8,
+          "nextFrame": 8,
+          "blend": 0,
+          "wind": 1.032812425652725,
+          "time": 2.0626999999880784,
+          "position": [
+            4.937768762677484,
+            0.22072210953346844,
+            -2.312373225152129
+          ]
+        },
+        {
+          "mode": "walking",
+          "distance": 0.08530532246565423,
+          "gait": 1,
+          "reach": 0,
+          "frame": 0,
+          "nextFrame": 1,
+          "blend": 0,
+          "wind": 1.0489838232548663,
+          "time": 2.331299999982117,
+          "position": [
+            5.015852652229319,
+            0.2281048460222676,
+            -2.3459311182830347
+          ]
+        },
+        {
+          "mode": "walking",
+          "distance": 0.1769156506699798,
+          "gait": 1,
+          "reach": 0,
+          "frame": 1,
+          "nextFrame": 2,
+          "blend": 0,
+          "wind": 1.0543450213578958,
+          "time": 2.4561999999880775,
+          "position": [
+            5.101033317162532,
+            0.23536285699591158,
+            -2.3789220772541433
+          ]
+        },
+        {
+          "mode": "walking",
+          "distance": 0.44741074018287047,
+          "gait": 1,
+          "reach": 0,
+          "frame": 3,
+          "nextFrame": 4,
+          "blend": 0,
+          "wind": 1.0609724176160795,
+          "time": 2.7120999999642352,
+          "position": [
+            5.35426338798315,
+            0.2558477327156918,
+            -2.4720351487076897
+          ]
+        },
+        {
+          "mode": "walking",
+          "distance": 0.6217903976737483,
+          "gait": 1,
+          "reach": 0,
+          "frame": 4,
+          "nextFrame": 5,
+          "blend": 0,
+          "wind": 1.0620965391188841,
+          "time": 2.843899999976156,
+          "position": [
+            5.5129518433816145,
+            0.2713524018386239,
+            -2.5425109174482903
+          ]
+        },
+        {
+          "mode": "walking",
+          "distance": 1.023141071893324,
+          "gait": 1,
+          "reach": 0,
+          "frame": 7,
+          "nextFrame": 0,
+          "blend": 0,
+          "wind": 1.0596983911370257,
+          "time": 3.109199999988076,
+          "position": [
+            5.841011914109663,
+            0.32038512275620595,
+            -2.765386921619118
+          ]
+        },
+        {
+          "mode": "walking",
+          "distance": 2.072782384264337,
+          "gait": 1,
+          "reach": 0,
+          "frame": 7,
+          "nextFrame": 0,
+          "blend": 0,
+          "wind": 1.0299678054268793,
+          "time": 3.746799999982116,
+          "position": [
+            6.536923048174146,
+            0.4875388811027502,
+            -3.525176732285228
+          ]
+        },
+        {
+          "mode": "walking",
+          "distance": 2.4353857994546773,
+          "gait": 1,
+          "reach": 0,
+          "frame": 1,
+          "nextFrame": 2,
+          "blend": 0,
+          "wind": 1.0101232076855413,
+          "time": 3.996699999988076,
+          "position": [
+            6.762576227202611,
+            0.5479993790520741,
+            -3.799997177509428
+          ]
+        },
+        {
+          "mode": "walking",
+          "distance": 2.5913138910821947,
+          "gait": 1,
+          "reach": 0,
+          "frame": 2,
+          "nextFrame": 3,
+          "blend": 0.05623277733969826,
+          "wind": 0.9987257158595936,
+          "time": 4.121699999988075,
+          "position": [
+            6.860298106231905,
+            0.5738838270057331,
+            -3.917653759116969
+          ]
+        },
+        {
+          "mode": "walking",
+          "distance": 2.8347030459160774,
+          "gait": 1,
+          "reach": 0,
+          "frame": 4,
+          "nextFrame": 5,
+          "blend": 0,
+          "wind": 0.9732164857880955,
+          "time": 4.373199999988074,
+          "position": [
+            7.015309595270061,
+            0.613861527484419,
+            -4.099370579474631
+          ]
+        },
+        {
+          "mode": "walking",
+          "distance": 2.9140796393732717,
+          "gait": 1,
+          "reach": 0,
+          "frame": 5,
+          "nextFrame": 6,
+          "blend": 0,
+          "wind": 0.9592246041150464,
+          "time": 4.499999999970193,
+          "position": [
+            7.066842487739348,
+            0.6267277238477083,
+            -4.157853290216855
+          ]
+        },
+        {
+          "mode": "standing",
+          "distance": 2.9683796891373606,
+          "gait": 0,
+          "reach": 0,
+          "frame": 5,
+          "nextFrame": 8,
+          "blend": 0.2097302501394581,
+          "wind": 0.9300930566133543,
+          "time": 4.748199999988073,
+          "position": [
+            7.102447552447552,
+            0.6354615384615383,
+            -4.197552447552447
+          ]
+        }
+      ]
+    },
+    {
+      "name": "one short approach settles to a complete standing pose",
+      "data": {
+        "mode": "standing",
+        "distance": 2.9683796891373606,
+        "gait": 0,
+        "reach": 0,
+        "frame": 8,
+        "nextFrame": 8,
+        "blend": 0,
+        "wind": 0.6950102140293185,
+        "time": 6.8087999999821065,
+        "position": [
+          7.102447552447552,
+          0.6354615384615383,
+          -4.197552447552447
+        ]
+      }
+    },
+    {
+      "name": "reverse scrolling moves the camera without dragging the traveler backwards",
+      "data": {
+        "mode": "standing",
+        "distance": 2.9683796891373606,
+        "gait": 0,
+        "reach": 0,
+        "frame": 8,
+        "nextFrame": 8,
+        "blend": 0,
+        "wind": 0.6567668158433881,
+        "time": 7.819399999976146,
+        "position": [
+          7.102447552447552,
+          0.6354615384615383,
+          -4.197552447552447
+        ]
+      }
+    },
+    {
+      "name": "hold advances whole reach poses, cancellation restores the stance",
+      "data": {
+        "mode": "reaching",
+        "distance": 2.9683796891373606,
+        "gait": 0,
+        "reach": 0.532678417093887,
+        "frame": 9,
+        "nextFrame": 10,
+        "blend": 0.7045709347004383,
+        "wind": 0.9325877427399821,
+        "time": 13.86619999998805,
+        "position": [
+          7.102447552447552,
+          0.6354615384615383,
+          -4.197552447552447
+        ]
+      }
+    },
+    {
+      "name": "reading pauses the journey",
+      "data": {
+        "mode": "standing",
+        "distance": 2.9683796891373606,
+        "gait": 0,
+        "reach": 1.490540300081002e-17,
+        "frame": 8,
+        "nextFrame": 8,
+        "blend": 0,
+        "wind": 0.853070159726723,
+        "time": 24.037012000011217,
+        "position": [
+          7.102447552447552,
+          0.6354615384615383,
+          -4.197552447552447
+        ]
+      }
+    },
+    {
+      "name": "reduced motion freezes the complete standing pose",
+      "data": {
+        "mode": "standing",
+        "distance": 2.9683796891373606,
+        "gait": 0,
+        "reach": 0,
+        "frame": 8,
+        "nextFrame": 8,
+        "blend": 0,
+        "wind": 0,
+        "time": 26.052116000031248,
+        "position": [
+          7.102447552447552,
+          0.6354615384615383,
+          -4.197552447552447
+        ]
+      }
+    }
+  ],
+  "errors": []
+}

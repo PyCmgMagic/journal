@@ -162,19 +162,6 @@
   .standalone-article .reading-topbar{height:56px}
 }
 
-/* The second shot shares one image coordinate system with its inlaid light and touch point. */
-.monolith-encounter {
-  --reveal: var(--encounter-blend, 0);
-  --feather: clamp(24px, 4cqw, 68px);
-  --edge: calc(100% + var(--feather) - (100% + 2 * var(--feather)) * var(--reveal));
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  opacity: clamp(0, calc(var(--reveal) * 8), 1);
-  mask-image: linear-gradient(to right, transparent var(--edge), #000 calc(var(--edge) + var(--feather)));
-  pointer-events: none;
-  overflow: hidden;
-}
 .journal-app:is([data-phase="awakening"],[data-phase="awake"]) .hero-copy { visibility: hidden !important; }
 .journal-app[data-phase="awakening"] .mobile-world-controls { visibility: hidden; }
 .paint-stone .monolith-control {
@@ -185,97 +172,70 @@
 }
 .paint-stone .monolith-control:disabled { visibility: hidden; }
 .paint-stone .monolith-control::after { color: var(--ink); }
-.monolith-encounter[data-ready="false"] { visibility: hidden; }
-.encounter-frame {
-  position: absolute;
-  width: max(100cqw, 177.68cqh);
-  aspect-ratio: 1672 / 941;
-  top: 0;
-  left: 50%;
-  transform: translateX(calc(-1 * var(--encounter-crop, 50%))) scale(var(--encounter-scale, 1));
-}
-.encounter-frame > img, .encounter-effects { position: absolute; inset: 0; width: 100%; height: 100%; }
-.encounter-hand-light { opacity: clamp(0, calc(var(--charge) * .72 + var(--stone-flare, 0) * .7), 1); }
-.encounter-trace {
-  opacity: clamp(0, calc(var(--charge) * 4), 1);
-  stroke-dasharray: 1;
-  stroke-dashoffset: calc(1 - var(--charge));
-}
-.encounter-node { opacity: clamp(0, calc((var(--charge) - var(--rune-delay)) * 5), 1); }
-.encounter-sparks { opacity: clamp(0, calc(var(--charge) * 1.3), 1); }
-.encounter-sparks circle {
-  transform: translate(calc(var(--toward-x) * var(--charge)), calc(var(--toward-y) * var(--charge)));
-}
-.encounter-touch {
-  position: absolute;
-  opacity: var(--encounter-controls, 0);
-  width: clamp(60px, 6vw, 92px);
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%);
-}
-.encounter-meter { width: 100%; height: 100%; overflow: visible; }
-.encounter-meter > circle { fill: #80c4bf24; stroke: #fff0b096; stroke-width: 1.4; }
-.encounter-meter > .encounter-meter-fill {
-  fill: none;
-  stroke: #fff1ad;
-  stroke-width: 5;
-  stroke-linecap: round;
-  stroke-dasharray: 1;
-  stroke-dashoffset: calc(1 - var(--charge));
-  opacity: clamp(0, calc(var(--charge) * 25), 1);
-  filter: drop-shadow(0 0 6px #fff3ab);
-}
-.encounter-meter > .encounter-meter-center { fill: #fff3ba; stroke: none; }
-.encounter-hit {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: transparent;
-  touch-action: none;
-  user-select: none;
-  visibility: hidden;
-}
-.encounter-hit:focus-visible { outline-color: #fff2ab; }
-[data-encounter="near"] .monolith-encounter[data-ready="true"] .encounter-hit:not([inert]) {
-  visibility: visible;
-  pointer-events: auto;
-}
-.encounter-instruction {
-  position: absolute;
-  top: 50%;
-  left: calc(100% + 13px);
-  transform: translateY(-50%);
-  white-space: nowrap;
-  padding: 7px 14px;
-  border: 1px solid #69546b82;
-  border-radius: 4px 9px 8px 3px;
-  background: #fbefdce8;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 600;
-}
-[data-encounter]:not([data-encounter="wide"]) :is(.paint-lamp,.paint-stone,.mobile-world-controls,.world-caption) {
-  visibility: hidden;
-}
-[data-encounter]:not([data-encounter="wide"]) .scene-journal {
-  visibility: hidden !important;
-}
-@media (min-width: 761px) {
-  .journey-navigation {
-    transform: translateX(calc(-50% + (150px - 44.5cqw) * var(--encounter-nav, 0)));
-  }
-}
+/* Phone crop follows the same scroll progress as the perspective camera. */
 @media (max-width: 760px) {
-  .encounter-frame { --encounter-crop: 60.1%; }
   .paint-position {
-    --approach: var(--encounter-camera, 0);
-    transform: translate(calc(-50% + 30cqw * var(--approach)), calc(-22cqh * var(--approach))) scale(calc(1 + .785714 * var(--approach)));
-    mask-image: linear-gradient(to bottom, transparent, #000 calc(13% * (1 - var(--approach))));
+    --approach: var(--station-approach, 0);
+    transform: translate(calc(-50% - 31cqw * var(--approach)), calc(-12.6cqh * var(--approach))) scale(calc(1 + .45 * var(--approach)));
+    mask-image: linear-gradient(to bottom, transparent, #000 calc(13% - 5% * var(--approach)));
   }
-  .encounter-instruction {
+}
+@media (min-width: 481px) and (max-width: 760px) {
+  .paint-position {
+    height: max(56%, calc(100cqw * .5628));
     left: 50%;
-    top: calc(100% + 13px);
-    transform: translateX(-50%);
-    font-size: 12px;
+    transform: translate(-50%, calc(-12.6cqh * var(--approach))) scale(calc(1 + .45 * var(--approach)));
   }
+}
+/* Scene controls follow the ink-and-paper treatment of the storyboards. */
+.paint-lamp .world-label{font-size:14px;padding:5px 10px;background:#f5ebd8e8;top:-10px;left:15px;border-radius:2px;min-height:32px}
+.paint-stone .monolith-control{background:transparent;border:1px solid #fff0bc88;box-shadow:none;color:#fff1be}
+.paint-stone .monolith-control::after{content:'长按，唤醒观测站';top:50%;left:calc(100% + 18px);transform:translateY(-50%);font-size:13px;padding:8px 15px;background:#fff0d9;border-color:#68516d;border-radius:6px}
+.paint-stone .monolith-control::before{inset:-9px;mask:radial-gradient(transparent 60%,#000 62%)}
+.world-viewport[data-journey-stage='station'] .monolith-control{width:64px;height:64px}
+.world-viewport[data-journey-stage='arrival'] .paint-stone{opacity:.5}
+.world-viewport[data-journey-stage='arrival'] .monolith-control::after{display:none}
+.hover-preview{width:308px;max-height:none;padding:21px 24px 22px;background:#f2eaf7;border:1px solid #67546f;border-radius:18px 23px 16px 21px;box-shadow:3px 5px 0 #77648212}
+.hover-preview::after{content:'';position:absolute;bottom:-13px;left:20px;width:20px;height:24px;background:#f2eaf7;clip-path:polygon(0 0,100% 0,0 100%)}
+.hover-preview h3{font-size:20px;line-height:1.55;margin:11px 0 6px}.hover-preview p{font-size:12px}.hover-preview a{font-size:13px;margin-top:10px}.hover-preview .category-caption{font-size:12px;border:1px solid #a39168;border-radius:2px}
+.collection-panel.content-panel{width:min(650px,46vw);border-left:0;border-radius:8px 0 0 0;overflow:visible;box-shadow:none;background:#f1eaf6}
+.collection-panel.content-panel::before{content:'';left:-23px;top:0;bottom:0;width:25px;background:#f1eaf6;clip-path:polygon(100% 0,38% 0,12% 3%,30% 7%,14% 12%,34% 17%,17% 23%,35% 29%,10% 36%,25% 42%,12% 49%,30% 56%,8% 63%,26% 70%,12% 77%,30% 83%,8% 90%,26% 95%,0 100%,100% 100%)}
+.collection-panel .panel-topbar{padding:0 38px;border:0}.collection-panel .panel-scroll{padding:25px 38px 50px}.collection-panel .article-row{padding:23px 0}.collection-panel .article-row h2{font-size:21px}
+@media(max-width:760px){.collection-panel.content-panel{width:100%;overflow:hidden;border-radius:10px 10px 0 0}.collection-panel .panel-scroll{padding:24px 6vw 40px}.collection-panel .panel-topbar{padding:0 6vw}}
+@media(max-width:760px){
+ .paint-position{height:76%;top:auto;bottom:0;left:50%;transform:translateX(calc(-70% + 15% * var(--scene-approach,0)));mask-image:linear-gradient(to bottom,transparent,#000 10%)}
+ .journey-navigation{width:260px}
+}
+@media(max-width:760px){.paint-position{transform:translateX(calc(-70% + 15% * var(--scene-approach,0))) scale(calc(1 + .315 * var(--scene-approach,0)));transform-origin:50% 100%}}
+
+/* Complete illustrations: one reversible fade-through transition and a
+   separate damped pointer transform. No camera orbit or walking cutout. */
+.frames-stage .paint-position{top:0;bottom:auto;left:50%;height:max(100%,calc(100cqw * .5628));transform:translateX(-50%);mask-image:none}
+.frames-stage .frame-world{will-change:transform;isolation:isolate}
+.frame-parallax{position:relative;width:100%;height:100%;transform-origin:50% 50%;will-change:transform}
+.scene-frame{position:absolute;inset:0;visibility:hidden;pointer-events:none}
+.frames-stage[data-shot="overview"] .overview-frame,.frames-stage[data-shot="encounter"] .encounter-frame{visibility:visible;pointer-events:auto}
+.frames-stage[data-transitioning="true"] .scene-frame{pointer-events:none}
+.frame-effects{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;fill:none}
+.frame-glyph{stroke:#fff3b8;stroke-width:4;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 5px #ffec96);opacity:var(--stone-light,0)}
+.frame-trail{stroke:#fff5b4;stroke-width:4;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 6px #ffe393);opacity:0}
+.frame-wave{stroke:#fff0b1;stroke-width:2;opacity:0}
+.frame-stars{opacity:var(--stars,0);stroke:#fff4c6;stroke-width:1.5;filter:drop-shadow(0 0 4px #fff6bc)}
+.frame-stars .star-mark{fill:#fff4c6;stroke-width:1}
+.charge-sparks{fill:#fff4bf;opacity:var(--charge,0);transform-origin:1005px 586px;transform:scale(calc(1 - .72 * var(--charge,0)))}
+.frames-stage .paint-lamp .lamp-aura{width:85px;height:85px;opacity:calc(var(--lamp,0)*.92);transform:translate(-50%,-50%);transition:none}
+.frames-stage .stone-aura{width:90px;height:90px;opacity:calc(var(--charge,0)*.65);transition:none}
+.frames-stage .paint-stone{opacity:1!important}
+.frames-stage .monolith-control:after{display:block!important}
+.approach-control{position:absolute;left:80.8%;top:22%;display:flex;align-items:center;gap:10px;background:transparent;font-size:27px;color:#fff2be;padding:10px;transform:translate(-50%,-50%);text-shadow:0 0 7px #fff3ad}
+.approach-control span{font-size:11px;background:#fff0d9;color:var(--ink);padding:5px 9px;border:1px solid var(--line);border-radius:3px;text-shadow:none}
+.has-panel .approach-control,.journal-app:is([data-phase="awakening"],[data-phase="awake"]) .approach-control{visibility:hidden;pointer-events:none}
+.frame-reading-panorama{position:absolute;inset:0 0 auto;height:30svh;background:#b8adc9 url('/images/observatory-world.webp') center 30%/cover no-repeat;opacity:var(--reading-scene,0);pointer-events:none}
+.world-viewport[data-scene-shot="encounter"] .hero-copy{visibility:hidden!important;pointer-events:none}
+.world-viewport[data-scene-shot="encounter"] .hover-preview{display:none}
+@media(max-width:760px){
+ .frames-stage .paint-position{height:76%;top:auto;bottom:0;left:50%;transform:translateX(-70%);mask-image:linear-gradient(to bottom,transparent,#000 10%)}
+ .frames-stage[data-shot="encounter"] .paint-position{height:100%;transform:translateX(-60%);mask-image:none}
+ .frames-stage .approach-control{display:none}
+ .frame-reading-panorama{height:clamp(150px,25svh,220px);background-size:auto 400px;background-position:65% 42%}
 }

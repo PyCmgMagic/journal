@@ -7,8 +7,11 @@
       "width": 1672,
       "height": 941,
       "method": "built-in image_gen",
-      "references": ["../observatory-world.png", "../../../design/references/interaction-01-04.png"],
-      "purpose": "Dedicated ground-level shot for approach and charging, aligned with live engraving and touch overlays",
+      "references": [
+        "../observatory-world.png",
+        "../../../design/references/interaction-01-04.png"
+      ],
+      "purpose": "Current complete encounter scene, served as ../monolith-encounter.webp; original PNG retained",
       "prompt": "Paint a full-bleed 16:9 landscape close-up shot for the attached interactive site. Input 1 is the source panorama for exact palette, thin deliberate ink lines, worn turquoise stone, peach ringed planet, ivory observatory and red-scarf traveler. Input 2 is a storyboard; use only its top-right panel 02 for camera composition. Low viewpoint on the mint grassy island. Large turquoise monolith stands center-right, its top near 12% of frame and grassy foot at 87%, its narrow right side visible, diagonal orbital circle engraved around 37% of frame height and a thin engraved line with three small round nodes down the front. A small traveler stands at its foot in cream coat, short dark hair and flowing red scarf, one hand raised to the lower rune. Brass telescope and observation hut behind on left, pastel ringed salmon planet in lavender sky behind, lavender rocks and grass blades. Keep main stone and traveler within middle 56% of image for center crop on phones. Enough lavender sky at very top for site navigation. This is the unpowered background. No text, UI, progress rings, lights, watermarks, borders or collage. Repaint as a new shot in the same environment, with the shot change from the storyboard."
     },
     {
@@ -35,5 +38,18 @@
       "purpose": "Transparent planet and continuous rings, with occluded planet surface reconstructed",
       "prompt": "Use case: background-extraction. This is a production 2.5D texture layer for the existing website. Edit target: the attached 1672x941 Moebius-style observatory illustration. Extract ONLY the enormous peach/pink ringed planet in the upper-middle/right. Remove ALL sky, clouds, mountains, island, buildings, telescope, antennas, cyan monolith, person, trees, lamps and foreground. Output actual RGBA transparent background, not a checkerboard drawing. Preserve exact original planet placement, scale, thin linework, pink and lavender banding, ring ellipse angle and width. Full canvas same 1672x941 aspect ratio; do not center, zoom, crop or recompose. Reconstruct the planet surface and full circular silhouette where foreground buildings and terrain hid it, consistently extending the original fine ink bands. Center approximately x1095 y490, radius~425; ring extends left to x607 y265 and right to x1445 y150. The upper half visible in source must look as unchanged as possible. The rings are thin continuous ivory and blush elliptical bands passing in front and behind the planet with transparent gaps. Only the planet and its rings are opaque. No other moons, stars, decorations, or text. This asset will be overlaid at the exact original image coordinates."
     }
-  ]
+  ],
+  "currentDocumentation": "../../../docs/SCENE_MOTION_2026-11-06.md",
+  "activeTextures": ["../observatory-world.webp", "../monolith-encounter.webp"],
+  "historicalLayerTextures": [
+    "planet-cutout.webp",
+    "island-ground.webp",
+    "observatory-atlas.webp",
+    "clouds-alpha.webp",
+    "meadow-detail.webp",
+    "meadow-props.webp",
+    "landmark-atlas.webp",
+    "traveler-animation.webp"
+  ],
+  "motionDocumentation": "../../../docs/SCENE_MOTION_2026-11-06.md"
 }

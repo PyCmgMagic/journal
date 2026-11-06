@@ -1,0 +1,9 @@
+{
+  "checks": [
+    "rapid forward/reverse always leaves exactly one complete shot visible",
+    "reading opened from the close shot restores that shot and exact scroll",
+    "cancel then retry wakes the same scene and cuts back to the overview",
+    "station navigation still revisits the lit close shot after awakening"
+  ],
+  "errors": []
+}
